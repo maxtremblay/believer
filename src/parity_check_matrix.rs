@@ -6,6 +6,12 @@ pub struct ParityCheckMatrix {
 }
 
 impl ParityCheckMatrix {
+    pub fn dot(&self, vector: &[GF2]) -> Vec<GF2> {
+        self.rows_iter()
+            .map(|row| row.dot(vector))
+            .collect()
+    }
+
     /// Creates a new `ParityCheckMatrix` from a list of `(row, col)` where
     /// each tuple is the position of a non zero element.
     ///
@@ -50,22 +56,44 @@ impl ParityCheckMatrix {
         }
     }
 
-    pub fn row_slice(&self, row: usize) -> Option<Slice> {
+    pub fn row_slice(&self, row: usize) -> Option<RowSlice> {
         self.row_ranges.get(row).and_then(|&row_start| {
             self.row_ranges.get(row + 1).map(|&row_end| {
-                Slice {
+                RowSlice {
                     positions: &self.column_indices[row_start..row_end]
                 }
             })
         })
     }
+
+    pub fn rows_iter(&self) -> RowsIter {
+        RowsIter {
+            matrix: &self,
+            active_row: 0,
+        }
+    }
 }
 
-pub struct Slice<'a> {
+pub struct RowsIter<'a> {
+    matrix: &'a ParityCheckMatrix,
+    active_row: usize,
+}
+
+impl<'a> Iterator for RowsIter<'a> {
+    type Item = RowSlice<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let slice = self.matrix.row_slice(self.active_row);
+        self.active_row += 1;
+        slice
+    }
+}
+
+pub struct RowSlice<'a> {
     positions: &'a [usize],
 }
 
-impl<'a> Slice<'a> {
+impl<'a> RowSlice<'a> {
     pub fn dot(&self, other: &[GF2]) -> GF2 {
         let mut total = GF2::B0;
         self.positions.iter().for_each(|&pos| {
@@ -90,5 +118,6 @@ mod test {
         
         assert_eq!(parity_check.row_slice(0).unwrap().dot(&bits), GF2::B1);
         assert_eq!(parity_check.row_slice(1).unwrap().dot(&bits), GF2::B0);
+        assert_eq!(parity_check.dot(&bits), vec![GF2::B1, GF2::B0]);
     }
 }
