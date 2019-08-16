@@ -23,7 +23,7 @@ use rand::distributions::Uniform;
 pub trait BinaryChannel {
 
     /// For a given `output`, compute log(p(output|input = 1) / p(output|input = 0)).
-    ///
+    /// 
     /// # Example
     /// 
     /// ```
@@ -33,7 +33,6 @@ pub trait BinaryChannel {
     /// assert_eq!(bsc.intrinsic_likelyhood(GF2::B1), 2.0);
     /// ```
     fn intrinsic_likelyhood(&self, output: GF2) -> f64;
-
 
     /// For a given `input`, returns an `output` according to some 
     /// probability distribution depending on the channel.
@@ -51,39 +50,48 @@ pub trait BinaryChannel {
     }
 }
 
+/// A binary symmetric channel caracterize by its error probability `prob`.
+/// That is, every time an input is send throught the channel, it is 
+/// flipped with probability `prob`.
 pub struct BinarySymmetricChannel {
     prob: f64,
     log_likelyhood: f64,
 }
 
 impl BinarySymmetricChannel {
-    pub fn new(prob: f64) -> Result<Self, &'static str> {
+    /// Creates a new binary symmetric channel from an given `prob` of error.
+    /// 
+    /// # Panic
+    /// 
+    /// Panic if `prob` is not between 0 and 1.
+    pub fn new(prob: f64) -> Self {
         if 0.0 <= prob && prob <= 1.0 {
-            Ok(Self {
+            Self {
                 prob,
                 log_likelyhood: (prob / (1.0 - prob)).log2()
-            })
+            }
         } else {
-            Err("prob is not between 0 and 1")
+            panic!("prob is not between 0 and 1")
         }
     }
 }
 
 impl BinaryChannel for BinarySymmetricChannel {
+    fn intrinsic_likelyhood(&self, output: GF2) -> f64 {
+        if output == GF2::B0 {
+            self.log_likelyhood
+        } else {
+            -1.0 * self.log_likelyhood
+        }
+    }
+
+
     fn send(&self, input: GF2) -> GF2 {
         let rand = thread_rng().sample(Uniform::new(0.0, 1.0));
         if rand < self.prob {
             input + GF2::B1
         } else {
             input
-        }
-    }
-
-    fn intrinsic_likelyhood(&self, output: GF2) -> f64 {
-        if output == GF2::B0 {
-            self.log_likelyhood
-        } else {
-            -1.0 * self.log_likelyhood
         }
     }
 }
