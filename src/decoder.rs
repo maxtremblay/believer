@@ -70,8 +70,8 @@ impl<'a> Decoder<'a> {
         let updated_values = extrinsec_likelyhoods
             .rows_iter()
             .map(|row| {
-                row.map(|(val, pos): (f64, usize)| {
-                    ((val - total_likelyhoods[pos]) / 2.0)
+                row.map(|(val, pos): (&f64, &usize)| {
+                    ((*val - total_likelyhoods[*pos]) / 2.0)
                 })
                 .product::<f64>()
                 .tanh()

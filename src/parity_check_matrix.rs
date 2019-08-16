@@ -75,6 +75,14 @@ impl ParityCheckMatrix {
         }
     }
 
+    pub fn row_ranges(&self) -> &[usize] {
+        &self.row_ranges
+    }
+
+    pub fn column_indices(&self) -> &[usize] {
+        &self.column_indices
+    }
+
     /// Returns `Some` slice of the given `row` in `self`. Returns `None` if
     /// `row` is out of bound.
     ///
