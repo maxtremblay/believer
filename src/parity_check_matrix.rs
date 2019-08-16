@@ -8,9 +8,9 @@ pub struct ParityCheckMatrix {
 
 impl ParityCheckMatrix {
     /// Computes the dot product between `self` and a binary vector.
-    /// 
-    /// # Example 
-    /// 
+    ///
+    /// # Example
+    ///
     /// ```
     /// # use::believer::*;
     /// let parity_check = ParityCheckMatrix::new(vec![
@@ -20,13 +20,15 @@ impl ParityCheckMatrix {
     ///     (1, 2),
     /// ]);
     /// let vector = vec![GF2::B0, GF2::B1, GF2::B1];
-    /// 
+    ///
     /// assert_eq!(parity_check.dot(&vector), vec![GF2::B1, GF2::B0]);
     /// ```
     pub fn dot(&self, vector: &[GF2]) -> Vec<GF2> {
-        self.rows_iter()
-            .map(|row| row.dot(vector))
-            .collect()
+        self.rows_iter().map(|row| row.dot(vector)).collect()
+    }
+
+    pub fn len(&self) -> usize {
+        return self.column_indices.len()
     }
 
     /// Creates a new `ParityCheckMatrix` from a list of `(row, col)` where
@@ -73,10 +75,10 @@ impl ParityCheckMatrix {
         }
     }
 
-    /// Returns `Some` slice of the given `row` in `self`. Returns `None` if 
+    /// Returns `Some` slice of the given `row` in `self`. Returns `None` if
     /// `row` is out of bound.
-    /// 
-    /// # Example 
+    ///
+    /// # Example
     /// ```
     /// # use::believer::*;
     /// let parity_check = ParityCheckMatrix::new(vec![
@@ -87,22 +89,20 @@ impl ParityCheckMatrix {
     /// ]);
     /// let slice = parity_check.row_slice(0).unwrap();
     /// let vector = vec![GF2::B1, GF2::B1, GF2::B0];
-    /// 
+    ///
     /// assert_eq!(slice.dot(&vector), GF2::B0);
     /// ```
     pub fn row_slice(&self, row: usize) -> Option<RowSlice> {
         self.row_ranges.get(row).and_then(|&row_start| {
-            self.row_ranges.get(row + 1).map(|&row_end| {
-                RowSlice {
-                    positions: &self.column_indices[row_start..row_end]
-                }
+            self.row_ranges.get(row + 1).map(|&row_end| RowSlice {
+                positions: &self.column_indices[row_start..row_end],
             })
         })
     }
 
     /// Returns an iterator that yields a slice for each row of `self`.
-    /// 
-    /// # Example 
+    ///
+    /// # Example
     /// ```
     /// # use::believer::*;
     /// let parity_check = ParityCheckMatrix::new(vec![
@@ -112,11 +112,11 @@ impl ParityCheckMatrix {
     ///     (1, 2),
     /// ]);
     /// let mut iter = parity_check.rows_iter();
-    /// 
+    ///
     /// assert_eq!(iter.next(), parity_check.row_slice(0));
     /// assert_eq!(iter.next(), parity_check.row_slice(1));
     /// assert_eq!(iter.next(), None);
-    /// 
+    ///
     /// ```
     pub fn rows_iter(&self) -> RowsIter {
         RowsIter {
@@ -165,14 +165,9 @@ mod test {
     use super::*;
     #[test]
     fn dot_product() {
-        let parity_check = ParityCheckMatrix::new(vec![
-            (0, 0),
-            (0, 1),    
-            (1, 1),
-            (1, 2),
-        ]);   
+        let parity_check = ParityCheckMatrix::new(vec![(0, 0), (0, 1), (1, 1), (1, 2)]);
         let bits = vec![GF2::B0, GF2::B1, GF2::B1];
-        
+
         assert_eq!(parity_check.row_slice(0).unwrap().dot(&bits), GF2::B1);
         assert_eq!(parity_check.row_slice(1).unwrap().dot(&bits), GF2::B0);
         assert_eq!(parity_check.dot(&bits), vec![GF2::B1, GF2::B0]);

@@ -1,13 +1,13 @@
 use crate::GF2;
-use rand::{Rng, thread_rng};
 use rand::distributions::Uniform;
+use rand::{thread_rng, Rng};
 
-/// A trait that represent a binary transmission channel. It takes an `GF2` element 
-/// and (randomly) map it to an other `GF2` element. It has an intrinsic likelyhood 
+/// A trait that represent a binary transmission channel. It takes an `GF2` element
+/// and (randomly) map it to an other `GF2` element. It has an intrinsic likelyhood
 /// for each output.
 ///
-/// # Example 
-/// 
+/// # Example
+///
 /// ```
 /// # use believer::*;
 /// // Create a bsc with error prob of 0.2.
@@ -21,11 +21,10 @@ use rand::distributions::Uniform;
 /// println!("{}", number_of_one); // Should be around 200.
 /// ```
 pub trait BinaryChannel {
-
     /// For a given `output`, compute log(p(output|input = 1) / p(output|input = 0)).
-    /// 
+    ///
     /// # Example
-    /// 
+    ///
     /// ```
     /// # use believer::*;
     /// let bsc = channel::BinarySymmetricChannel::new(0.2).unwrap();
@@ -34,11 +33,18 @@ pub trait BinaryChannel {
     /// ```
     fn intrinsic_likelyhood(&self, output: GF2) -> f64;
 
-    /// For a given `input`, returns an `output` according to some 
+    /// For a given `input`, returns an `output` according to some
     /// probability distribution depending on the channel.
     fn send(&self, input: GF2) -> GF2;
-    
-    /// Returns a `Vec` of outputs as long as the `inputs` where each 
+
+    fn message_likelyhood(&self, output: &[GF2]) -> Vec<f64> {
+        output
+            .iter()
+            .map(|x| self.intrinsic_likelyhood(*x))
+            .collect()
+    }
+
+    /// Returns a `Vec` of outputs as long as the `inputs` where each
     /// output is sample using the `send` method.
     fn sample(&self, inputs: &[GF2]) -> Vec<GF2> {
         inputs.iter().map(|input| self.send(*input)).collect()
@@ -51,7 +57,7 @@ pub trait BinaryChannel {
 }
 
 /// A binary symmetric channel caracterize by its error probability `prob`.
-/// That is, every time an input is send throught the channel, it is 
+/// That is, every time an input is send throught the channel, it is
 /// flipped with probability `prob`.
 pub struct BinarySymmetricChannel {
     prob: f64,
@@ -60,15 +66,15 @@ pub struct BinarySymmetricChannel {
 
 impl BinarySymmetricChannel {
     /// Creates a new binary symmetric channel from an given `prob` of error.
-    /// 
+    ///
     /// # Panic
-    /// 
+    ///
     /// Panic if `prob` is not between 0 and 1.
     pub fn new(prob: f64) -> Self {
         if 0.0 <= prob && prob <= 1.0 {
             Self {
                 prob,
-                log_likelyhood: (prob / (1.0 - prob)).log2()
+                log_likelyhood: (prob / (1.0 - prob)).log2(),
             }
         } else {
             panic!("prob is not between 0 and 1")
@@ -84,7 +90,6 @@ impl BinaryChannel for BinarySymmetricChannel {
             -1.0 * self.log_likelyhood
         }
     }
-
 
     fn send(&self, input: GF2) -> GF2 {
         let rand = thread_rng().sample(Uniform::new(0.0, 1.0));

@@ -1,5 +1,5 @@
+use num::{One, Zero};
 use std::ops::{Add, Mul};
-use num::{Zero, One};
 
 /// A simple implementation of a binary field with addition, multiplication and comparison.
 ///
