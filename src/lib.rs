@@ -1,5 +1,5 @@
 pub mod channel;
-pub use channel::{Channel, BinarySymmetricChannel};
+pub use channel::BinaryChannel;
 
 pub mod gf2;
 pub use gf2::GF2;
