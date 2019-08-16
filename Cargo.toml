@@ -1,0 +1,7 @@
+[package]
+name = "believer"
+version = "0.1.0"
+authors = ["Maxime <--replace-all>"]
+edition = "2018"
+
+[dependencies]
