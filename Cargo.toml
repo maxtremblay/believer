@@ -5,3 +5,4 @@ authors = ["Maxime <--replace-all>"]
 edition = "2018"
 
 [dependencies]
+num = "0.2.0"
