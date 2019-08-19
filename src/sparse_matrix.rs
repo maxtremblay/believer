@@ -40,6 +40,24 @@ impl<'a> SparseMatrix<'a> {
     pub(crate) fn values(&self) -> &[f64] {
         &self.values
     }
+
+    pub(crate) fn get(&self, row: usize, col: usize) -> Option<&f64> {
+        self.index_of(row, col)
+            .and_then(|index| self.values.get(index))
+    }
+
+    fn index_of(&self, row: usize, col: usize) -> Option<usize> {
+        self.row_ranges.get(row).and_then(|&row_start| {
+            self.row_ranges.get(row + 1).and_then(|&row_end| {
+                self.column_indices
+                    .iter()
+                    .skip(row_start)
+                    .take(row_end - row_start)
+                    .position(|&c| c == col)
+                    .map(|pos| pos + row_start)
+            })
+        })
+    }
 }
 
 pub(crate) struct RowsIter<'a> {

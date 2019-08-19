@@ -10,13 +10,13 @@ pub struct Decoder<'a> {
 }
 
 impl<'a> Decoder<'a> {
-    pub fn decode(&self, message: Vec<GF2>, max_iters: u32) -> Option<Vec<GF2>> {
+    pub fn decode(&self, message: &[GF2], max_iters: u32) -> Option<Vec<GF2>> {
         let mut extrinsec_likelyhoods = 
             SparseMatrix::from_parity_check(self.parity_check, vec![0.0; self.parity_check.len()]);
         let intrinsec_likelyhoods = self.channel.message_likelyhood(&message);
         let mut total_likelyhoods = intrinsec_likelyhoods.clone();
         let mut iter = 0;
-        let mut decoded_message = message.clone();
+        let mut decoded_message = message.to_vec();
 
         while !self.is_codeword(&decoded_message) && iter < max_iters {
             iter += 1;
@@ -67,7 +67,7 @@ impl<'a> Decoder<'a> {
         extrinsec_likelyhoods: &SparseMatrix,
         total_likelyhoods: &[f64],
     ) -> SparseMatrix<'a> {
-        let updated_values = extrinsec_likelyhoods
+        let likelyhood_diff_products: Vec<f64> = extrinsec_likelyhoods
             .rows_iter()
             .map(|row| {
                 row.map(|(val, pos): (&f64, &usize)| {
@@ -76,8 +76,23 @@ impl<'a> Decoder<'a> {
                 .product::<f64>()
                 .tanh()
             })
-            .map(|x: f64| -2.0 * x.atanh())
             .collect();
+        
+        let updated_values = self.parity_check
+            .positions_iter()
+            .map(|(row, col)| {
+                extrinsec_likelyhoods
+                    .get(row, col)
+                    .map(|val| {
+                        ((val - total_likelyhoods[col]) / 2.0).tanh()
+                    })
+                    .map(|denominator| {
+                        -2.0 * (likelyhood_diff_products[row] / denominator).atanh()
+                    })
+                    .unwrap_or(0.0)
+            })
+            .collect();
+
         SparseMatrix::from_parity_check(self.parity_check, updated_values)
     }
 
@@ -85,5 +100,28 @@ impl<'a> Decoder<'a> {
     // It could be faster if the first 1 is near the beggining of message.
     fn is_codeword(&self, message: &[GF2]) -> bool {
         self.parity_check.dot(message).iter().all(|x| x == &GF2::B0)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::channel::BinarySymmetricChannel;
+
+    #[test]
+    fn general_usage() {
+        // Tests with a 3 bits repetition code over a 
+        // bsc with error probability of 0.2.s
+        let channel = BinarySymmetricChannel::new(0.2);
+        let parity_check = ParityCheckMatrix::new(vec![
+            (0, 0),
+            (0, 1),
+            (1, 1),
+            (1, 2)
+        ]);
+        let decoder = Decoder::new(&channel, &parity_check);
+
+        let decoded_message = decoder.decode(&vec![GF2::B0, GF2::B0, GF2::B1], 10);
+        assert_eq!(decoded_message, Some(vec![GF2::B0; 3]));
     }
 }

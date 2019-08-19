@@ -11,7 +11,7 @@ use rand::{thread_rng, Rng};
 /// ```
 /// # use believer::*;
 /// // Create a bsc with error prob of 0.2.
-/// let bsc = channel::BinarySymmetricChannel::new(0.2).unwrap();
+/// let bsc = channel::BinarySymmetricChannel::new(0.2);
 /// // Sample the channel by always sending 0.
 /// let received = bsc.sample_uniform(GF2::B0, 1000);
 /// let number_of_one = received.iter()
@@ -27,7 +27,7 @@ pub trait BinaryChannel {
     ///
     /// ```
     /// # use believer::*;
-    /// let bsc = channel::BinarySymmetricChannel::new(0.2).unwrap();
+    /// let bsc = channel::BinarySymmetricChannel::new(0.2);
     /// assert_eq!(bsc.intrinsic_likelyhood(GF2::B0), -2.0);
     /// assert_eq!(bsc.intrinsic_likelyhood(GF2::B1), 2.0);
     /// ```
