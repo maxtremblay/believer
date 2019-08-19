@@ -14,10 +14,8 @@ impl ParityCheckMatrix {
     /// ```
     /// # use::believer::*;
     /// let parity_check = ParityCheckMatrix::new(vec![
-    ///     (0, 0),
-    ///     (0, 1),    
-    ///     (1, 1),
-    ///     (1, 2),
+    ///     vec![0, 1],
+    ///     vec![1, 2],
     /// ]);
     /// let vector = vec![GF2::B0, GF2::B1, GF2::B1];
     ///
@@ -31,8 +29,8 @@ impl ParityCheckMatrix {
         return self.column_indices.len()
     }
 
-    /// Creates a new `ParityCheckMatrix` from a list of `(row, col)` where
-    /// each tuple is the position of a non zero element.
+    /// Creates a new `ParityCheckMatrix` from a list of `checks` where
+    /// each check is a list of the bits connected to that check.
     ///
     /// # Example
     ///
@@ -40,34 +38,22 @@ impl ParityCheckMatrix {
     /// # use::believer::ParityCheckMatrix;
     /// // The parity check matrix of a 3 bits repetition code.
     /// let parity_check = ParityCheckMatrix::new(vec![
-    ///     (0, 0),
-    ///     (0, 1),    
-    ///     (1, 1),
-    ///     (1, 2),
+    ///     vec![0, 1],
+    ///     vec![1, 2],
     /// ]);
     /// ```
-    pub fn new(positions: Vec<(usize, usize)>) -> Self {
-        let mut column_indices = Vec::with_capacity(positions.len());
-        let mut row_ranges = Vec::new();
+    pub fn new(mut checks: Vec<Vec<usize>>) -> Self {
+        let mut column_indices = Vec::new();
+        let mut row_ranges = Vec::with_capacity(checks.len() + 1);
         row_ranges.push(0);
-
-        let mut active_row = 0;
-        let mut row_lenght = 0;
-
-        for (row, col) in positions.into_iter() {
-            if row == active_row {
-                row_lenght += 1;
-            } else {
-                while active_row < row {
-                    row_ranges.push(*row_ranges.last().unwrap_or(&0) + row_lenght);
-                    active_row += 1;
-                }
-                row_lenght = 1;
-            }
-            column_indices.push(col);
+        
+        let mut n_elements = 0;
+        for check in checks.iter_mut() {
+            n_elements += check.len();
+            row_ranges.push(n_elements);
+            check.sort();
+            column_indices.append(check);
         }
-
-        row_ranges.push(*row_ranges.last().unwrap_or(&0) + row_lenght);
 
         Self {
             row_ranges,
@@ -99,9 +85,7 @@ impl ParityCheckMatrix {
     /// ```
     /// # use::believer::*;
     /// let parity_check = ParityCheckMatrix::new(vec![
-    ///     (0, 0),
     ///     (0, 1),    
-    ///     (1, 1),
     ///     (1, 2),
     /// ]);
     /// let slice = parity_check.row_slice(0).unwrap();
@@ -123,10 +107,8 @@ impl ParityCheckMatrix {
     /// ```
     /// # use::believer::*;
     /// let parity_check = ParityCheckMatrix::new(vec![
-    ///     (0, 0),
-    ///     (0, 1),    
-    ///     (1, 1),
-    ///     (1, 2),
+    ///     vec![0, 1],    
+    ///     vec![1, 2],
     /// ]);
     /// let mut iter = parity_check.rows_iter();
     ///
@@ -207,7 +189,10 @@ mod test {
     use super::*;
     #[test]
     fn dot_product() {
-        let parity_check = ParityCheckMatrix::new(vec![(0, 0), (0, 1), (1, 1), (1, 2)]);
+        let parity_check = ParityCheckMatrix::new(vec![
+            vec![0, 1],
+            vec![1, 2],
+        ]);
         let bits = vec![GF2::B0, GF2::B1, GF2::B1];
 
         assert_eq!(parity_check.row_slice(0).unwrap().dot(&bits), GF2::B1);

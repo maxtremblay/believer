@@ -114,10 +114,8 @@ mod test {
         // bsc with error probability of 0.2.s
         let channel = BinarySymmetricChannel::new(0.2);
         let parity_check = ParityCheckMatrix::new(vec![
-            (0, 0),
-            (0, 1),
-            (1, 1),
-            (1, 2)
+            vec![0, 1],
+            vec![1, 2],
         ]);
         let decoder = Decoder::new(&channel, &parity_check);
 
