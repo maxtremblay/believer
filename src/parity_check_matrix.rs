@@ -83,6 +83,15 @@ impl ParityCheckMatrix {
         &self.column_indices
     }
 
+    pub fn positions_iter(&self) -> PositionsIter {
+        PositionsIter {
+            active_row: 0,
+            index: 0,
+            row_ranges: &self.row_ranges,
+            column_indices: &self.column_indices,
+        }
+    }
+
     /// Returns `Some` slice of the given `row` in `self`. Returns `None` if
     /// `row` is out of bound.
     ///
@@ -165,6 +174,31 @@ impl<'a> RowSlice<'a> {
 
     pub fn positions(&self) -> &[usize] {
         self.positions
+    }
+}
+
+pub struct PositionsIter<'a> {
+    active_row: usize,
+    index: usize,
+    row_ranges: &'a [usize],
+    column_indices: &'a [usize],
+}
+
+impl<'a> Iterator for PositionsIter<'a> {
+    type Item = (usize, usize);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.row_ranges.get(self.active_row + 1).and_then(|&row_end| {
+            if self.index >= row_end {
+                self.active_row += 1;
+            }
+            let position = self.column_indices.get(self.index).map(|&col| {
+                (self.active_row, col)
+            });
+            self.index += 1;
+            position
+        })
+
     }
 }
 
