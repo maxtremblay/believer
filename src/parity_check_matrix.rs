@@ -85,8 +85,8 @@ impl ParityCheckMatrix {
     /// ```
     /// # use::believer::*;
     /// let parity_check = ParityCheckMatrix::new(vec![
-    ///     (0, 1),    
-    ///     (1, 2),
+    ///     vec![0, 1],    
+    ///     vec![1, 2],
     /// ]);
     /// let slice = parity_check.row_slice(0).unwrap();
     /// let vector = vec![GF2::B1, GF2::B1, GF2::B0];
