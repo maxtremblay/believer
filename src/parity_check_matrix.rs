@@ -2,8 +2,9 @@ use crate::GF2;
 
 #[derive(Debug, PartialEq)]
 pub struct ParityCheckMatrix {
-    row_ranges: Vec<usize>,
-    column_indices: Vec<usize>,
+    check_ranges: Vec<usize>,
+    bit_indices: Vec<usize>,
+    n_bits: usize
 }
 
 impl ParityCheckMatrix {
@@ -26,7 +27,15 @@ impl ParityCheckMatrix {
     }
 
     pub fn len(&self) -> usize {
-        return self.column_indices.len()
+        self.bit_indices.len()
+    }
+
+    pub fn n_bits(&self) -> usize {
+        self.n_bits
+    }
+
+    pub fn n_checks(&self) -> usize {
+        self.check_ranges().len() - 1
     }
 
     /// Creates a new `ParityCheckMatrix` from a list of `checks` where
@@ -43,38 +52,41 @@ impl ParityCheckMatrix {
     /// ]);
     /// ```
     pub fn new(mut checks: Vec<Vec<usize>>) -> Self {
-        let mut column_indices = Vec::new();
-        let mut row_ranges = Vec::with_capacity(checks.len() + 1);
-        row_ranges.push(0);
+        let mut bit_indices = Vec::new();
+        let mut check_ranges = Vec::with_capacity(checks.len() + 1);
+        check_ranges.push(0);
         
         let mut n_elements = 0;
+        let mut n_bits = 0;
         for check in checks.iter_mut() {
             n_elements += check.len();
-            row_ranges.push(n_elements);
+            check_ranges.push(n_elements);
             check.sort();
-            column_indices.append(check);
+            check.last().map(|c| if (c + 1) > n_bits {n_bits = c + 1});
+            bit_indices.append(check);
         }
 
         Self {
-            row_ranges,
-            column_indices,
+            check_ranges,
+            bit_indices,
+            n_bits,
         }
     }
 
-    pub fn row_ranges(&self) -> &[usize] {
-        &self.row_ranges
+    pub fn check_ranges(&self) -> &[usize] {
+        &self.check_ranges
     }
 
-    pub fn column_indices(&self) -> &[usize] {
-        &self.column_indices
+    pub fn bit_indices(&self) -> &[usize] {
+        &self.bit_indices
     }
 
     pub fn positions_iter(&self) -> PositionsIter {
         PositionsIter {
             active_row: 0,
             index: 0,
-            row_ranges: &self.row_ranges,
-            column_indices: &self.column_indices,
+            check_ranges: &self.check_ranges,
+            bit_indices: &self.bit_indices,
         }
     }
 
@@ -94,9 +106,9 @@ impl ParityCheckMatrix {
     /// assert_eq!(slice.dot(&vector), GF2::B0);
     /// ```
     pub fn row_slice(&self, row: usize) -> Option<RowSlice> {
-        self.row_ranges.get(row).and_then(|&row_start| {
-            self.row_ranges.get(row + 1).map(|&row_end| RowSlice {
-                positions: &self.column_indices[row_start..row_end],
+        self.check_ranges.get(row).and_then(|&row_start| {
+            self.check_ranges.get(row + 1).map(|&row_end| RowSlice {
+                positions: &self.bit_indices[row_start..row_end],
             })
         })
     }
@@ -162,19 +174,19 @@ impl<'a> RowSlice<'a> {
 pub struct PositionsIter<'a> {
     active_row: usize,
     index: usize,
-    row_ranges: &'a [usize],
-    column_indices: &'a [usize],
+    check_ranges: &'a [usize],
+    bit_indices: &'a [usize],
 }
 
 impl<'a> Iterator for PositionsIter<'a> {
     type Item = (usize, usize);
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.row_ranges.get(self.active_row + 1).and_then(|&row_end| {
+        self.check_ranges.get(self.active_row + 1).and_then(|&row_end| {
             if self.index >= row_end {
                 self.active_row += 1;
             }
-            let position = self.column_indices.get(self.index).map(|&col| {
+            let position = self.bit_indices.get(self.index).map(|&col| {
                 (self.active_row, col)
             });
             self.index += 1;
