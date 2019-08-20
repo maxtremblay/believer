@@ -35,13 +35,16 @@ use crate::GF2;
 /// let decoded_message = decoder.decode(&received_message, 10);
 /// assert_eq!(decoded_message, Some(vec![GF2::B0; 5]));
 /// ```
-pub struct Decoder<'a> {
-    channel: &'a BinaryChannel,
+pub struct Decoder<'a, C>
+    where 
+        C: BinaryChannel
+ {
+    channel: &'a C,
     parity_check: &'a ParityCheckMatrix,
     transposer: Transposer,
 }
 
-impl<'a> Decoder<'a> {
+impl<'a, C: BinaryChannel> Decoder<'a, C> {
     /// Decodes a given `message`.
     /// 
     /// # Panic 
@@ -106,7 +109,7 @@ impl<'a> Decoder<'a> {
         }
     }
 
-    pub fn new(channel: &'a BinaryChannel, parity_check: &'a ParityCheckMatrix) -> Self {
+    pub fn new(channel: &'a C, parity_check: &'a ParityCheckMatrix) -> Self {
         Self {
             channel,
             parity_check,
