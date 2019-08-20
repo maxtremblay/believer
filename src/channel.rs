@@ -51,7 +51,7 @@ pub trait BinaryChannel {
     }
 
     /// Returns a `Vec` of outputs where the `input` is send `n_inputs` times.
-    fn sample_uniform(&self, input: GF2, n_inputs: u32) -> Vec<GF2> {
+    fn sample_uniform(&self, input: GF2, n_inputs: usize) -> Vec<GF2> {
         (0..n_inputs).map(|_| self.send(input)).collect()
     }
 }
