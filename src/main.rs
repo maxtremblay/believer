@@ -1,6 +1,8 @@
 use believer::{BinaryChannel, Decoder, GF2, ParityCheckMatrix};
 use believer::channel::BinarySymmetricChannel;
 use rayon::prelude::*;
+use std::fs;
+// use std::io::prelude::*;
 
 fn generate_parity_check(m: usize) -> ParityCheckMatrix {
     let mut checks = Vec::with_capacity(4 * m);
@@ -14,6 +16,16 @@ fn generate_parity_check(m: usize) -> ParityCheckMatrix {
     ParityCheckMatrix::new(checks)
 }
 
+fn write_vec_to_file<T: ToString>(vec: Vec<T>, file: &str) {
+    let data = vec.iter()
+        .fold(String::new(), |mut acc, x| {
+            acc.push_str(&x.to_string());
+            acc.push('\n');
+            acc
+        });
+    fs::write(file, data).expect("Unable to write file");
+}
+
 fn main() {
     // *
     // Parameters
@@ -21,8 +33,8 @@ fn main() {
 
     let min_m = 1;
     let max_m = 10;
-    let n_errors_per_thread = 5;
-    let n_thread = 4;
+    let n_errors_per_thread = 2;
+    let n_thread = 2;
     let error_prob = 0.25;
     let max_iters = 50;
 
@@ -59,7 +71,8 @@ fn main() {
     .map(|total: u32| (n_thread * n_errors_per_thread) as f64 / total as f64)
     .collect();
 
-    println!("{:#?}", error_rates);
+    write_vec_to_file(error_rates, "error_rates.txt");
+    write_vec_to_file((min_m..=max_m).collect(), "repetitions.txt");
 }
 
 
