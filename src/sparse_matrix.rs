@@ -15,8 +15,8 @@ impl<'a> SparseMatrix<'a> {
         }
         Self {
             values,
-            row_ranges: parity_check.row_ranges(),
-            column_indices: parity_check.column_indices(),
+            row_ranges: parity_check.check_ranges(),
+            column_indices: parity_check.bit_indices(),
         }
     }
 
