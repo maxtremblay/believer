@@ -1,8 +1,40 @@
+//! A sparse implementation of the belief propagation decoder for a binary channel.
+//! The implementation is based on "Error Correction Coding: Mathematical Methods 
+//! and Algorithms (Chapter 15), Todd K. Moon, 2005, Wiley".
+//! 
+
 use crate::channel::BinaryChannel;
 use crate::sparse_matrix::{SparseMatrix, Transposer};
 use crate::ParityCheckMatrix;
 use crate::GF2;
 
+/// A `Decoder` can decode a message received from a given `channel` using a given
+/// `parity_check` matrix.
+/// 
+/// # Example 
+/// 
+/// ```
+/// # use believer::*;
+/// // A bsc with error prob 0.2.
+/// let channel = channel::BinarySymmetricChannel::new(0.2);
+/// 
+/// // A 5 bits repetition code.
+/// let parity_check = ParityCheckMatrix::new(vec![
+///     vec![0, 1],
+///     vec![1, 2],
+///     vec![2, 3],
+///     vec![3, 4],
+/// ]); 
+/// 
+/// let decoder = Decoder::new(&channel, &parity_check);
+/// 
+/// // A message with 2 errors.
+/// let received_message = vec![GF2::B1, GF2::B1, GF2::B0, GF2::B0, GF2::B0];
+/// 
+/// // Should be decoded to the all zero codeword.
+/// let decoded_message = decoder.decode(&received_message, 10);
+/// assert_eq!(decoded_message, Some(vec![GF2::B0; 5]));
+/// ```
 pub struct Decoder<'a> {
     channel: &'a BinaryChannel,
     parity_check: &'a ParityCheckMatrix,
@@ -10,7 +42,41 @@ pub struct Decoder<'a> {
 }
 
 impl<'a> Decoder<'a> {
-    pub fn decode(&self, message: &[GF2], max_iters: u32) -> Option<Vec<GF2>> {
+    /// Decodes a given `message`.
+    /// 
+    /// # Panic 
+    /// 
+    /// Panics if `message` lenght doesn't correspond to `self.n_bits()`.
+    /// 
+    /// # Example 
+    /// 
+    /// ```
+    /// # use believer::*;
+    /// // A bsc with error prob 0.2.
+    /// let channel = channel::BinarySymmetricChannel::new(0.2);
+    /// 
+    /// // A 5 bits repetition code.
+    /// let parity_check = ParityCheckMatrix::new(vec![
+    ///     vec![0, 1],
+    ///     vec![1, 2],
+    ///     vec![2, 3],
+    ///     vec![3, 4],
+    /// ]); 
+    /// 
+    /// let decoder = Decoder::new(&channel, &parity_check);
+    /// 
+    /// // A message with 2 errors.
+    /// let received_message = vec![GF2::B1, GF2::B1, GF2::B0, GF2::B0, GF2::B0];
+    /// 
+    /// // Should be decoded to the all zero codeword.
+    /// let decoded_message = decoder.decode(&received_message, 10);
+    /// assert_eq!(decoded_message, Some(vec![GF2::B0; 5]));
+    /// ```
+    pub fn decode(&self, message: &[GF2], max_iters: usize) -> Option<Vec<GF2>> {
+        if message.len() != self.n_bits() {
+            panic!("message doesn't have the right length")
+        }
+        
         let mut extrinsec_likelyhoods = 
             SparseMatrix::from_parity_check(self.parity_check, vec![0.0; self.parity_check.len()]);
         let intrinsec_likelyhoods = self.channel.message_likelyhood(&message);
@@ -46,6 +112,14 @@ impl<'a> Decoder<'a> {
             parity_check,
             transposer: Transposer::new(parity_check),
         }
+    }
+
+    pub fn n_bits(&self) -> usize {
+        self.parity_check.n_bits()
+    }
+
+    pub fn n_checks(&self) -> usize {
+        self.parity_check.n_checks()
     }
 
     fn bit_node_update(

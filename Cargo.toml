@@ -4,7 +4,18 @@ version = "0.1.0"
 authors = ["Maxime <--replace-all>"]
 edition = "2018"
 
+[lib]
+name = "believer"
+path = "src/lib.rs"
+
+[[bin]]
+name = "bin"
+path = "src/main.rs"
+
 [dependencies]
 num = "0.2.0"
 rand = "0.7.0"
 itertools = "0.8.0"
+rayon = "1.1.0"
+
+

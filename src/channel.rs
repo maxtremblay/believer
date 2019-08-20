@@ -20,7 +20,7 @@ use rand::{thread_rng, Rng};
 ///     .len();
 /// println!("{}", number_of_one); // Should be around 200.
 /// ```
-pub trait BinaryChannel {
+pub trait BinaryChannel: Sync {
     /// For a given `output`, compute log(p(output|input = 1) / p(output|input = 0)).
     ///
     /// # Example
