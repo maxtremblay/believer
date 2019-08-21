@@ -16,7 +16,7 @@ fn generate_parity_check(m: usize) -> ParityCheckMatrix {
     ParityCheckMatrix::new(checks)
 }
 
-fn write_vec_to_file<T: ToString>(vec: Vec<T>, file: &str) {
+fn write_vec_to_file<T: ToString>(vec: &[T], file: &str) {
     let data = vec.iter()
         .fold(String::new(), |mut acc, x| {
             acc.push_str(&x.to_string());
@@ -32,9 +32,9 @@ fn main() {
     // * 
 
     let min_m = 1;
-    let max_m = 10;
+    let max_m = 15;
     let n_errors_per_thread = 2;
-    let n_thread = 2;
+    let n_threads = 2;
     let error_prob = 0.25;
     let max_iters = 50;
 
@@ -43,16 +43,27 @@ fn main() {
     // *
 
     let channel = BinarySymmetricChannel::new(error_prob);
+
+    let mut totals: Vec<u32> = Vec::with_capacity(max_m - min_m + 1);
+
+    let file = format!(
+        "total_iters_m_{}_to_{}_prob_{}_n_errors_{}.txt",
+        min_m,
+        max_m,
+        error_prob,
+        n_errors_per_thread * n_threads    
+    );
     
     // *
     // Main loop
     // *
-
-    let error_rates: Vec<f64> = (min_m..=max_m).map(|m| {
+   
+    (min_m..=max_m).for_each(|m| {
         let parity_check = generate_parity_check(m);
         let decoder = Decoder::new(&channel, &parity_check);
-
-        (0..n_thread).into_par_iter()
+        
+        totals.push(
+            (0..n_threads).into_par_iter()
             .map(|_| {
                 let mut errors = 0;
                 let mut total = 0;
@@ -66,15 +77,10 @@ fn main() {
                 }
                 total
             })
-            .sum()  
-    })
-    .map(|total: u32| (n_thread * n_errors_per_thread) as f64 / total as f64)
-    .collect();
+            .sum()
+        );
+        println!("{}: {:?}", m, totals);
+        write_vec_to_file(&totals, &file);  
+    });
 
-    write_vec_to_file(error_rates, "error_rates.txt");
-    write_vec_to_file((min_m..=max_m).collect(), "repetitions.txt");
 }
-
-
-
-
