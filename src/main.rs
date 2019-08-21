@@ -2,7 +2,6 @@ use believer::{BinaryChannel, Decoder, GF2, ParityCheckMatrix};
 use believer::channel::BinarySymmetricChannel;
 use rayon::prelude::*;
 use std::fs;
-// use std::io::prelude::*;
 
 fn generate_parity_check(m: usize) -> ParityCheckMatrix {
     let mut checks = Vec::with_capacity(4 * m);
@@ -16,14 +15,19 @@ fn generate_parity_check(m: usize) -> ParityCheckMatrix {
     ParityCheckMatrix::new(checks)
 }
 
-fn write_vec_to_file<T: ToString>(vec: &[T], file: &str) {
-    let data = vec.iter()
-        .fold(String::new(), |mut acc, x| {
-            acc.push_str(&x.to_string());
-            acc.push('\n');
-            acc
-        });
-    fs::write(file, data).expect("Unable to write file");
+// fn write_vec_to_file<T: ToString>(vec: &[T], file: &str) {
+//     let data = vec.iter()
+//         .fold(String::new(), |mut acc, x| {
+//             acc.push_str(&x.to_string());
+//             acc.push('\n');
+//             acc
+//         });
+//     fs::write(file, data).expect("Unable to write file");
+// }
+
+fn write_data(total: usize, errors: usize, file: &str) {
+    let to_write = format!("{} / {}", errors, total);
+    fs::write(file, to_write).expect("Unable to write file");
 }
 
 fn main() {
@@ -31,10 +35,10 @@ fn main() {
     // Parameters
     // * 
 
-    let min_m = 1;
-    let max_m = 15;
-    let n_errors_per_thread = 2;
-    let n_threads = 2;
+    let min_m: usize = 1;
+    let max_m: usize = 10;
+    let n_errors_per_thread = 30;
+    let n_threads = 10;
     let error_prob = 0.25;
     let max_iters = 50;
 
@@ -44,27 +48,27 @@ fn main() {
 
     let channel = BinarySymmetricChannel::new(error_prob);
 
-    let mut totals: Vec<u32> = Vec::with_capacity(max_m - min_m + 1);
-
-    let file = format!(
-        "total_iters_m_{}_to_{}_prob_{}_n_errors_{}.txt",
-        min_m,
-        max_m,
-        error_prob,
-        n_errors_per_thread * n_threads    
+    let directory = format!(
+        "total_iters_prob_{}",
+        error_prob
     );
     
+    fs::create_dir(&directory).expect("Unable to create directory");
+
     // *
     // Main loop
     // *
    
-    (min_m..=max_m).for_each(|m| {
+    (min_m..=max_m).into_par_iter().for_each(|m: usize| {
         let parity_check = generate_parity_check(m);
         let decoder = Decoder::new(&channel, &parity_check);
         
-        totals.push(
-            (0..n_threads).into_par_iter()
-            .map(|_| {
+        let local_directory = format!("{}/m_{}", directory, m);
+        fs::create_dir(&local_directory).expect("Unable to create directory");
+
+        (0..n_threads)
+            .into_par_iter()
+            .for_each(|idx| {
                 let mut errors = 0;
                 let mut total = 0;
                 while errors < n_errors_per_thread {
@@ -75,12 +79,9 @@ fn main() {
                         errors += 1;
                     }
                 }
-                total
-            })
-            .sum()
-        );
-        println!("{}: {:?}", m, totals);
-        write_vec_to_file(&totals, &file);  
+                let file = format!("{}/{}.txt", local_directory, idx);
+                write_data(total, errors, &file);
+            });
     });
 
 }
