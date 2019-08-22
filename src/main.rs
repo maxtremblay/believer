@@ -25,8 +25,8 @@ fn generate_parity_check(m: usize) -> ParityCheckMatrix {
 //     fs::write(file, data).expect("Unable to write file");
 // }
 
-fn write_data(total: usize, errors: usize, file: &str) {
-    let to_write = format!("{} / {}", errors, total);
+fn write_data(total: usize, wrong_codeword: usize, stuck: usize, file: &str) {
+    let to_write = format!("{} : {} / {}", wrong_codeword, stuck, total);
     fs::write(file, to_write).expect("Unable to write file");
 }
 
@@ -35,12 +35,12 @@ fn main() {
     // Parameters
     // * 
 
-    let min_m: usize = 1;
-    let max_m: usize = 10;
-    let n_errors_per_thread = 30;
-    let n_threads = 10;
+    let min_m: usize = 17;
+    let max_m: usize = 17;
+    let n_errors_per_thread = 5;
+    let n_threads = 4;
     let error_prob = 0.25;
-    let max_iters = 50;
+    let max_iters = 200;
 
     // *
     // Setup
@@ -69,18 +69,23 @@ fn main() {
         (0..n_threads)
             .into_par_iter()
             .for_each(|idx| {
-                let mut errors = 0;
+                let mut wrong_codeword = 0;
+                let mut stuck = 0;
                 let mut total = 0;
-                while errors < n_errors_per_thread {
+                while wrong_codeword + stuck < n_errors_per_thread {
                     total += 1; 
                     let received_message = channel.sample_uniform(GF2::B0, 6 * m);
                     let decoded_message = decoder.decode(&received_message, max_iters);
-                    if decoded_message != Some(vec![GF2::B0; 6 * m]) {
-                        errors += 1;
+                    if let Some(b) = decoded_message {
+                        if b != vec![GF2::B0; 6 * m] {
+                            wrong_codeword += 1;
+                        }
+                    } else {
+                        stuck += 1;
                     }
                 }
                 let file = format!("{}/{}.txt", local_directory, idx);
-                write_data(total, errors, &file);
+                write_data(total, wrong_codeword, stuck, &file);
             });
     });
 
