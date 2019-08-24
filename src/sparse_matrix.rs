@@ -32,7 +32,7 @@ impl<'a> SparseMatrix<'a> {
             self.row_ranges.get(row + 1).map(|&row_end| RowSlice {
                 values: &self.values[row_start..row_end],
                 positions: &self.column_indices[row_start..row_end],
-                active: 0
+                active: 0,
             })
         })
     }
@@ -85,9 +85,10 @@ impl<'a> Iterator for RowSlice<'a> {
     type Item = (&'a f64, &'a usize);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let val_pos = self.values.get(self.active).and_then(|val| {
-            self.positions.get(self.active).map(|pos| (val, pos))
-        });
+        let val_pos = self
+            .values
+            .get(self.active)
+            .and_then(|val| self.positions.get(self.active).map(|pos| (val, pos)));
         self.active += 1;
         val_pos
     }
@@ -109,13 +110,12 @@ impl Transposer {
         let mut active_col = 0;
         let mut row_lenght = 0;
 
-        parity_check.positions_iter()
+        parity_check
+            .positions_iter()
             .enumerate()
-            .sorted_by(|(_, (r_0, c_0)), (_, (r_1, c_1))| {
-                match c_0.cmp(c_1) {
-                    Ordering::Equal => r_0.cmp(r_1),
-                    otherwise => otherwise
-                }
+            .sorted_by(|(_, (r_0, c_0)), (_, (r_1, c_1))| match c_0.cmp(c_1) {
+                Ordering::Equal => r_0.cmp(r_1),
+                otherwise => otherwise,
             })
             .for_each(|(idx, (row, col))| {
                 if col == active_col {
@@ -123,7 +123,7 @@ impl Transposer {
                 } else {
                     while active_col < col {
                         active_col += 1;
-                        row_ranges.push(*row_ranges.last().unwrap_or(&0) + row_lenght); 
+                        row_ranges.push(*row_ranges.last().unwrap_or(&0) + row_lenght);
                     }
                     row_lenght = 1;
                 }
@@ -142,7 +142,11 @@ impl Transposer {
 
     pub(crate) fn transpose(&self, matrix: &SparseMatrix) -> SparseMatrix {
         SparseMatrix {
-            values: self.indices.iter().map(|idx| matrix.values()[*idx].clone()).collect(),
+            values: self
+                .indices
+                .iter()
+                .map(|idx| matrix.values()[*idx].clone())
+                .collect(),
             row_ranges: &self.row_ranges,
             column_indices: &self.column_indices,
         }

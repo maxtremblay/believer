@@ -1,7 +1,7 @@
 //! A sparse implementation of the belief propagation decoder for a binary channel.
-//! The implementation is based on "Error Correction Coding: Mathematical Methods 
+//! The implementation is based on "Error Correction Coding: Mathematical Methods
 //! and Algorithms (Chapter 15), Todd K. Moon, 2005, Wiley".
-//! 
+//!
 
 use crate::channel::BinaryChannel;
 use crate::sparse_matrix::{SparseMatrix, Transposer};
@@ -10,35 +10,35 @@ use crate::GF2;
 
 /// A `Decoder` can decode a message received from a given `channel` using a given
 /// `parity_check` matrix.
-/// 
-/// # Example 
-/// 
+///
+/// # Example
+///
 /// ```
 /// # use believer::*;
 /// // A bsc with error prob 0.2.
 /// let channel = channel::BinarySymmetricChannel::new(0.2);
-/// 
+///
 /// // A 5 bits repetition code.
 /// let parity_check = ParityCheckMatrix::new(vec![
 ///     vec![0, 1],
 ///     vec![1, 2],
 ///     vec![2, 3],
 ///     vec![3, 4],
-/// ]); 
-/// 
+/// ]);
+///
 /// let decoder = Decoder::new(&channel, &parity_check);
-/// 
+///
 /// // A message with 2 errors.
 /// let received_message = vec![GF2::B1, GF2::B1, GF2::B0, GF2::B0, GF2::B0];
-/// 
+///
 /// // Should be decoded to the all zero codeword.
 /// let decoded_message = decoder.decode(&received_message, 10);
 /// assert_eq!(decoded_message, Some(vec![GF2::B0; 5]));
 /// ```
 pub struct Decoder<'a, C>
-    where 
-        C: BinaryChannel
- {
+where
+    C: BinaryChannel,
+{
     channel: &'a C,
     parity_check: &'a ParityCheckMatrix,
     transposer: Transposer,
@@ -46,31 +46,31 @@ pub struct Decoder<'a, C>
 
 impl<'a, C: BinaryChannel> Decoder<'a, C> {
     /// Decodes a given `message`.
-    /// 
-    /// # Panic 
-    /// 
+    ///
+    /// # Panic
+    ///
     /// Panics if `message` lenght doesn't correspond to `self.n_bits()`.
-    /// 
-    /// # Example 
-    /// 
+    ///
+    /// # Example
+    ///
     /// ```
     /// # use believer::*;
     /// // A bsc with error prob 0.2.
     /// let channel = channel::BinarySymmetricChannel::new(0.2);
-    /// 
+    ///
     /// // A 5 bits repetition code.
     /// let parity_check = ParityCheckMatrix::new(vec![
     ///     vec![0, 1],
     ///     vec![1, 2],
     ///     vec![2, 3],
     ///     vec![3, 4],
-    /// ]); 
-    /// 
+    /// ]);
+    ///
     /// let decoder = Decoder::new(&channel, &parity_check);
-    /// 
+    ///
     /// // A message with 2 errors.
     /// let received_message = vec![GF2::B1, GF2::B1, GF2::B0, GF2::B0, GF2::B0];
-    /// 
+    ///
     /// // Should be decoded to the all zero codeword.
     /// let decoded_message = decoder.decode(&received_message, 10);
     /// assert_eq!(decoded_message, Some(vec![GF2::B0; 5]));
@@ -79,8 +79,8 @@ impl<'a, C: BinaryChannel> Decoder<'a, C> {
         if message.len() != self.n_bits() {
             panic!("message doesn't have the right length")
         }
-        
-        let mut extrinsec_likelyhoods = 
+
+        let mut extrinsec_likelyhoods =
             SparseMatrix::from_parity_check(self.parity_check, vec![0.0; self.parity_check.len()]);
         let intrinsec_likelyhoods = self.channel.message_likelyhood(&message);
         let mut total_likelyhoods = intrinsec_likelyhoods.clone();
@@ -153,18 +153,15 @@ impl<'a, C: BinaryChannel> Decoder<'a, C> {
                 .product::<f64>()
             })
             .collect();
-        
-        let updated_values = self.parity_check
+
+        let updated_values = self
+            .parity_check
             .positions_iter()
             .map(|(row, col)| {
                 extrinsec_likelyhoods
                     .get(row, col)
-                    .map(|val| {
-                        ((val - total_likelyhoods[col]) / 2.0).tanh()
-                    })           
-                    .map(|denominator| {
-                        -2.0 * (likelyhood_diff_products[row] / denominator).atanh()
-                    })
+                    .map(|val| ((val - total_likelyhoods[col]) / 2.0).tanh())
+                    .map(|denominator| -2.0 * (likelyhood_diff_products[row] / denominator).atanh())
                     .unwrap_or(0.0)
             })
             .collect();
@@ -186,13 +183,10 @@ mod test {
 
     #[test]
     fn general_usage() {
-        // Tests with a 3 bits repetition code over a 
+        // Tests with a 3 bits repetition code over a
         // bsc with error probability of 0.2.s
         let channel = BinarySymmetricChannel::new(0.2);
-        let parity_check = ParityCheckMatrix::new(vec![
-            vec![0, 1],
-            vec![1, 2],
-        ]);
+        let parity_check = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2]]);
         let decoder = Decoder::new(&channel, &parity_check);
 
         let decoded_message = decoder.decode(&vec![GF2::B0, GF2::B0, GF2::B1], 10);
