@@ -148,10 +148,9 @@ impl<'a, C: BinaryChannel> Decoder<'a, C> {
             .rows_iter()
             .map(|row| {
                 row.map(|(val, pos): (&f64, &usize)| {
-                    ((*val - total_likelyhoods[*pos]) / 2.0)
+                    ((*val - total_likelyhoods[*pos]) / 2.0).tanh()
                 })
                 .product::<f64>()
-                .tanh()
             })
             .collect();
         
@@ -162,7 +161,7 @@ impl<'a, C: BinaryChannel> Decoder<'a, C> {
                     .get(row, col)
                     .map(|val| {
                         ((val - total_likelyhoods[col]) / 2.0).tanh()
-                    })
+                    })           
                     .map(|denominator| {
                         -2.0 * (likelyhood_diff_products[row] / denominator).atanh()
                     })
