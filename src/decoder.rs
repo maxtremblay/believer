@@ -109,6 +109,26 @@ impl<'a, C: BinaryChannel> Decoder<'a, C> {
         }
     }
 
+    /// Creates a new decoder from references to a `channel` and a `parity_check` matrix.
+    /// 
+    /// # Example
+    ///
+    /// ```
+    /// # use believer::*;
+    /// // A bsc with error prob 0.2.
+    /// let channel = channel::BinarySymmetricChannel::new(0.2);
+    ///
+    /// // A 5 bits repetition code.
+    /// let parity_check = ParityCheckMatrix::new(vec![
+    ///     vec![0, 1],
+    ///     vec![1, 2],
+    ///     vec![2, 3],
+    ///     vec![3, 4],
+    /// ]);
+    /// 
+    /// // The decoder
+    /// let decoder = Decoder::new(&channel, &parity_check);
+    /// ```
     pub fn new(channel: &'a C, parity_check: &'a ParityCheckMatrix) -> Self {
         Self {
             channel,
@@ -117,14 +137,50 @@ impl<'a, C: BinaryChannel> Decoder<'a, C> {
         }
     }
 
+    /// Returns the number of bits in `self`.
+    /// 
+    /// # Example
+    /// 
+    /// ```
+    /// # use believer::*;
+    /// let channel = channel::BinarySymmetricChannel::new(0.2);
+    /// let parity_check = ParityCheckMatrix::new(vec![
+    ///     vec![0, 1],
+    ///     vec![1, 2],
+    ///     vec![2, 3],
+    ///     vec![3, 4],
+    /// ]);
+    /// let decoder = Decoder::new(&channel, &parity_check);
+    /// 
+    /// assert_eq!(decoder.n_bits(), 5);
+    /// ```
     pub fn n_bits(&self) -> usize {
         self.parity_check.n_bits()
     }
 
+    /// Returns the number of checks in `self`.
+    /// 
+    /// # Example
+    /// 
+    /// ```
+    /// # use believer::*;
+    /// let channel = channel::BinarySymmetricChannel::new(0.2);
+    /// let parity_check = ParityCheckMatrix::new(vec![
+    ///     vec![0, 1],
+    ///     vec![1, 2],
+    ///     vec![2, 3],
+    ///     vec![3, 4],
+    /// ]);
+    /// let decoder = Decoder::new(&channel, &parity_check);
+    /// 
+    /// assert_eq!(decoder.n_checks(), 4);
+    /// ```
     pub fn n_checks(&self) -> usize {
         self.parity_check.n_checks()
     }
 
+    // Utilitary function for `Self::Decoder`. Returns the total likelyhoods by scanning 
+    // the bits.
     fn bit_node_update(
         &self,
         intrinsec_likelyhoods: &[f64],
@@ -139,6 +195,8 @@ impl<'a, C: BinaryChannel> Decoder<'a, C> {
             .collect()
     }
 
+    // Utilitary function for `Self::Decoder`. Returns the extrincisec likelyhoods by scanning 
+    // the checks.
     fn check_node_update(
         &self,
         extrinsec_likelyhoods: &SparseMatrix,
@@ -171,7 +229,24 @@ impl<'a, C: BinaryChannel> Decoder<'a, C> {
 
     // NOTE : Maybe implement parity_check.is_codeword(...).
     // It could be faster if the first 1 is near the beggining of message.
-    fn is_codeword(&self, message: &[GF2]) -> bool {
+
+    /// Checks if a `message` is a valid codeword.
+    ///
+    /// # Example
+    /// 
+    /// ```
+    /// # use believer::*;
+    /// let channel = channel::BinarySymmetricChannel::new(0.2);
+    /// let parity_check = ParityCheckMatrix::new(vec![
+    ///     vec![0, 1],
+    ///     vec![1, 2],
+    /// ]);
+    /// let decoder = Decoder::new(&channel, &parity_check);
+    /// 
+    /// assert_eq!(decoder.is_codeword(&vec![GF2::B0; 3]), true);
+    /// assert_eq!(decoder.is_codeword(&vec![GF2::B0, GF2::B1, GF2::B0]), false);
+    /// ```
+    pub fn is_codeword(&self, message: &[GF2]) -> bool {
         self.parity_check.dot(message).iter().all(|x| x == &GF2::B0)
     }
 }
@@ -189,7 +264,22 @@ mod test {
         let parity_check = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2]]);
         let decoder = Decoder::new(&channel, &parity_check);
 
+        // Should decode 1 error.
         let decoded_message = decoder.decode(&vec![GF2::B0, GF2::B0, GF2::B1], 10);
         assert_eq!(decoded_message, Some(vec![GF2::B0; 3]));
+
+        let decoded_message = decoder.decode(&vec![GF2::B1, GF2::B0, GF2::B1], 10);
+        assert_eq!(decoded_message, Some(vec![GF2::B1; 3]));
+    }
+
+    #[test] 
+    fn get_stuck_in_cycle() {
+        let channel = BinarySymmetricChannel::new(0.2);
+        let parity_check = ParityCheckMatrix::new(vec![
+            vec![0, 1],
+        ]);
+        let decoder = Decoder::new(&channel, &parity_check);
+
+        assert_eq!(decoder.decode(&vec![GF2::B0, GF2::B1], 10), None);
     }
 }
