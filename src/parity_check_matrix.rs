@@ -1,3 +1,5 @@
+//! A sparse implementation of a parity check matrix.
+
 use crate::GF2;
 
 #[derive(Debug, PartialEq)]

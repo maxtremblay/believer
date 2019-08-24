@@ -1,3 +1,5 @@
+//! Transmission channels.
+
 use crate::GF2;
 use rand::distributions::Uniform;
 use rand::{thread_rng, Rng};

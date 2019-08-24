@@ -1,3 +1,5 @@
+//! A belief propapagation decoder for classical and quantum sparse error correcting codes.
+
 pub mod channel;
 pub use channel::BinaryChannel;
 

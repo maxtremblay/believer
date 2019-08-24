@@ -1,7 +1,7 @@
 //! A sparse implementation of the belief propagation decoder for a binary channel.
+//! 
 //! The implementation is based on "Error Correction Coding: Mathematical Methods
 //! and Algorithms (Chapter 15), Todd K. Moon, 2005, Wiley".
-//!
 
 use crate::channel::BinaryChannel;
 use crate::sparse_matrix::{SparseMatrix, Transposer};
