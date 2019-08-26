@@ -2,6 +2,7 @@ use crate::ParityCheckMatrix;
 use itertools::Itertools;
 use std::cmp::Ordering;
 
+#[derive(Debug)]
 pub(crate) struct SparseMatrix<'a> {
     values: Vec<f64>,
     row_ranges: &'a [usize],

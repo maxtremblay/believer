@@ -1,7 +1,7 @@
 //! A simple implementation of a binary field with addition, multiplication and comparison.
 //!
 //! # Rules
-//! 
+//!
 //! ```
 //! # use believer::GF2;
 //! assert_eq!(GF2::B0 + GF2::B0, GF2::B0);
@@ -13,7 +13,7 @@
 //! assert_eq!(GF2::B1 * GF2::B1, GF2::B1);
 //! assert_eq!(GF2::B0 * GF2::B1, GF2::B0);
 //! assert_eq!(GF2::B1 * GF2::B0, GF2::B0);
-//! ``` 
+//! ```
 use num::{One, Zero};
 use std::ops::{Add, Mul};
 
