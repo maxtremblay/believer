@@ -254,7 +254,7 @@ impl<'a, C: BinaryChannel> Decoder<'a, C> {
 
 /// The possible results of the decoding process.
 ///
-/// `Codeword`: The algorithm converge to a given codeword.
+/// `Codeword(c)`: The algorithm converge to the codeword `c`.
 /// `GotStuck`: Some codewords are equally likely and the algorithm can't converge.
 /// `ReachedMaxIter`: Was not able to find a valid codeword in the given number of iterations.
 #[derive(Debug, PartialEq, Eq)]
