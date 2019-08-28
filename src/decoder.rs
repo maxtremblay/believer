@@ -33,7 +33,7 @@ use crate::GF2;
 ///
 /// // Should be decoded to the all zero codeword.
 /// let decoded_message = decoder.decode(&received_message, 10);
-/// assert_eq!(decoded_message, DecodingResult::Message(vec![GF2::B0; 5]));
+/// assert_eq!(decoded_message, DecodingResult::Codeword(vec![GF2::B0; 5]));
 /// ```
 pub struct Decoder<'a, C>
 where
@@ -68,7 +68,7 @@ impl<'a, C: BinaryChannel> Decoder<'a, C> {
     /// // Should be able to decode this message to the 1 codeword.
     /// let easy_message = vec![GF2::B0, GF2::B1, GF2::B1, GF2::B1];
     /// let easy_decoded = decoder.decode(&easy_message, 10);
-    /// assert_eq!(easy_decoded, DecodingResult::Message(vec![GF2::B1; 4]));
+    /// assert_eq!(easy_decoded, DecodingResult::Codeword(vec![GF2::B1; 4]));
     ///
     /// // Should get stuck while decoding this message.
     /// let impossible_message = vec![GF2::B0, GF2::B0, GF2::B1, GF2::B1];
@@ -80,32 +80,22 @@ impl<'a, C: BinaryChannel> Decoder<'a, C> {
             panic!("message doesn't have the right length")
         }
 
-        let mut extrinsec_likelyhoods =
-            SparseMatrix::from_parity_check(self.parity_check, vec![0.0; self.parity_check.len()]);
-        let intrinsec_likelyhoods = self.channel.message_likelyhood(&message);
-        let mut total_likelyhoods = intrinsec_likelyhoods.clone();
-
+        let mut likelyhoods = self.init_likelyhoods(message);
         let mut iter = 0;
         let mut result = None;
 
         while result.is_none() {
             iter += 1;
 
-            extrinsec_likelyhoods =
-                self.check_node_update(&extrinsec_likelyhoods, &total_likelyhoods);
-
-            total_likelyhoods =
-                self.bit_node_update(&intrinsec_likelyhoods, &extrinsec_likelyhoods);
+            likelyhoods.check_node_update();
+            likelyhoods.bit_node_update();
 
             if iter == max_iters {
                 result = Some(DecodingResult::ReachedMaxIter); 
-            } else if total_likelyhoods.iter().all(|l| l.abs() < 1e-12) {
+            } else if likelyhoods.is_stuck() {
                 result = Some(DecodingResult::GotStuck);
             } else {
-                let m: Vec<GF2> = total_likelyhoods
-                    .iter()
-                    .map(|l| if l > &0.0 { GF2::B1 } else { GF2::B0 })
-                    .collect();
+                let m: Vec<GF2> = likelyhoods.message();
                 if self.is_codeword(&m) {
                     result = Some(DecodingResult::Codeword(m));
                 }
@@ -185,47 +175,20 @@ impl<'a, C: BinaryChannel> Decoder<'a, C> {
         self.parity_check.n_checks()
     }
 
-    // Utilitary function for `Self::Decoder`. Returns the total likelyhoods by scanning
-    // the bits.
-    fn bit_node_update(
-        &self,
-        intrinsec_likelyhoods: &[f64],
-        extrinsec_likelyhoods: &SparseMatrix,
-    ) -> Vec<f64> {
-        self.transposer
-            .transpose(extrinsec_likelyhoods)
-            .rows_iter()
-            .map(|row| row.map(|(val, _)| val).sum())
-            .zip(intrinsec_likelyhoods)
-            .map(|(ext, int): (f64, &f64)| ext + *int)
-            .collect()
-    }
-
-    // Utilitary function for `Self::Decoder`. Returns the extrincisec likelyhoods by scanning
-    // the checks.
-    fn check_node_update(
-        &self,
-        extrinsec_likelyhoods: &SparseMatrix,
-        total_likelyhoods: &[f64],
-    ) -> SparseMatrix<'a> {
-        let updated_values = self
-            .parity_check
-            .positions_iter()
-            .map(|(row, col)| {
-                extrinsec_likelyhoods
-                    .row_slice(row)
-                    .map(|slice| {
-                        -2.0 * slice
-                            .filter(|(_, c)| c != &&col)
-                            .map(|(val, c)| ((val - total_likelyhoods[*c]) / 2.0).tanh())
-                            .product::<f64>()
-                            .atanh()
-                    })
-                    .unwrap_or(0.0)
-            })
-            .collect();
-
-        SparseMatrix::from_parity_check(self.parity_check, updated_values)
+    // TO DO
+    fn init_likelyhoods(&self, message: &[GF2]) -> Likelyhoods<C> {
+        let intrinsec = self.channel.message_likelyhood(message);
+        let total = intrinsec.clone();
+        let extrinsec = SparseMatrix::from_parity_check(
+            self.parity_check,
+            vec![0.0; self.parity_check.len()]
+        );
+        Likelyhoods {
+            decoder: &self,
+            total,
+            intrinsec,
+            extrinsec,
+        }
     }
 
     // NOTE : Maybe implement parity_check.is_codeword(...).
@@ -262,6 +225,64 @@ pub enum DecodingResult {
     Codeword(Vec<GF2>),
     GotStuck,
     ReachedMaxIter,
+}
+
+struct Likelyhoods<'a, C>
+where
+    C: BinaryChannel
+{
+    decoder: &'a Decoder<'a, C>,
+    total: Vec<f64>,
+    intrinsec: Vec<f64>,
+    extrinsec: SparseMatrix<'a>,
+}
+
+impl<'a, C: BinaryChannel> Likelyhoods<'a, C> {
+    fn bit_node_update(&mut self) {
+        self.total = self.decoder.transposer
+            .transpose(&self.extrinsec)
+            .rows_iter()
+            .map(|row| row.map(|(val, _)| val).sum())
+            .zip(&self.intrinsec)
+            .map(|(ext, int): (f64, &f64)| ext + int)
+            .collect()
+    }
+
+    fn check_node_update(&mut self) {
+        let updated_values = self
+            .decoder
+            .parity_check
+            .positions_iter()
+            .map(|(row, col)| {
+                self.extrinsec
+                    .row_slice(row)
+                    .map(|slice| {
+                        -2.0 * slice
+                            .filter(|(_, c)| c != &&col)
+                            .map(|(val, c)| ((val - self.total[*c]) / 2.0).tanh())
+                            .product::<f64>()
+                            .atanh()
+                    })
+                    .unwrap_or(0.0)
+            })
+            .collect();
+
+        self.extrinsec = SparseMatrix::from_parity_check(
+            self.decoder.parity_check,
+            updated_values
+        );
+    }
+
+    fn is_stuck(&self) -> bool {
+        self.total.iter().all(|l| l.abs() < 1e-12)
+    }
+
+    fn message(&self) -> Vec<GF2> {
+        self.total
+            .iter()
+            .map(|l| if l > &0.0 { GF2::B1 } else { GF2::B0 })
+            .collect()
+    }
 }
 
 #[cfg(test)]
