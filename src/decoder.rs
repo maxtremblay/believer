@@ -91,7 +91,7 @@ impl<'a, C: BinaryChannel> Decoder<'a, C> {
             likelyhoods.bit_node_update();
 
             if iter == max_iters {
-                result = Some(DecodingResult::ReachedMaxIter); 
+                result = Some(DecodingResult::ReachedMaxIter);
             } else if likelyhoods.is_stuck() {
                 result = Some(DecodingResult::GotStuck);
             } else {
@@ -179,10 +179,8 @@ impl<'a, C: BinaryChannel> Decoder<'a, C> {
     fn init_likelyhoods(&self, message: &[GF2]) -> Likelyhoods<C> {
         let intrinsec = self.channel.message_likelyhood(message);
         let total = intrinsec.clone();
-        let extrinsec = SparseMatrix::from_parity_check(
-            self.parity_check,
-            vec![0.0; self.parity_check.len()]
-        );
+        let extrinsec =
+            SparseMatrix::from_parity_check(self.parity_check, vec![0.0; self.parity_check.len()]);
         Likelyhoods {
             decoder: &self,
             total,
@@ -229,7 +227,7 @@ pub enum DecodingResult {
 
 struct Likelyhoods<'a, C>
 where
-    C: BinaryChannel
+    C: BinaryChannel,
 {
     decoder: &'a Decoder<'a, C>,
     total: Vec<f64>,
@@ -239,7 +237,9 @@ where
 
 impl<'a, C: BinaryChannel> Likelyhoods<'a, C> {
     fn bit_node_update(&mut self) {
-        self.total = self.decoder.transposer
+        self.total = self
+            .decoder
+            .transposer
             .transpose(&self.extrinsec)
             .rows_iter()
             .map(|row| row.map(|(val, _)| val).sum())
@@ -267,10 +267,7 @@ impl<'a, C: BinaryChannel> Likelyhoods<'a, C> {
             })
             .collect();
 
-        self.extrinsec = SparseMatrix::from_parity_check(
-            self.decoder.parity_check,
-            updated_values
-        );
+        self.extrinsec = SparseMatrix::from_parity_check(self.decoder.parity_check, updated_values);
     }
 
     fn is_stuck(&self) -> bool {

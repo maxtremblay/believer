@@ -15,3 +15,4 @@ pub use parity_check_matrix::ParityCheckMatrix;
 mod sparse_matrix;
 
 pub mod random_codes;
+pub use random_codes::CodeGenerator;
