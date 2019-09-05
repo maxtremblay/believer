@@ -1,0 +1,33 @@
+* Notes for believer project
+** TODO Erasure decoding pipeline [0/2]
+   - [ ] Create erasure decoder
+   - [ ] Create simulation functions
+ 
+** TODO Code generation [0/2]
+   - [ ] Hierarchical code generation
+   - [ ] Increasing range code generation
+
+** TODO Cleaning files [0/6]
+   - [ ] Parity check matrix
+   - [ ] Sparse matrix
+   - [ ] channel
+   - [ ] decoder
+   - [ ] gf2
+   - [ ] lib
+
+** TODO Documentation [0/6]  
+   - [ ] Parity check matrix
+   - [ ] Sparse matrix
+   - [ ] channel
+   - [ ] decoder
+   - [ ] gf2
+   - [ ] lib
+
+** TODO Testing [0/7]
+   - [ ] Parity check matrix
+   - [ ] Sparse matrix
+   - [ ] channel
+   - [ ] decoder
+   - [ ] gf2
+   - [ ] General behavior
+
