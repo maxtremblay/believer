@@ -10,7 +10,7 @@
 
 ## Cleaning
 - [ ] Sparse matrix
-- [ ] BP decoder
+- [x] BP decoder
 
 ## Documenting
 - [ ] Sparse matrix
@@ -19,5 +19,5 @@
 
 ## Testing
 - [ ] Sparse matrix
-- [ ] BP decoder
+- [x] BP decoder
 - [ ] General

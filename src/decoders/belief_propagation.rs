@@ -100,33 +100,13 @@ impl<'a, C: BinaryChannel> BPDecoder<'a, C> {
                 result = Some(BPResult::GotStuck);
             } else {
                 let m: Vec<GF2> = likelyhoods.message();
-                if self.is_codeword(&m) {
+                if self.parity_check.has_codeword(&m) {
                     result = Some(BPResult::Codeword(m));
                 }
             }
         }
 
         result.unwrap()
-    }
-
-    /// Checks if a `message` is a valid codeword.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # use believer::*;
-    /// let channel = channel::BinarySymmetricChannel::new(0.2);
-    /// let parity_check = ParityCheckMatrix::new(vec![
-    ///     vec![0, 1],
-    ///     vec![1, 2],
-    /// ]);
-    /// let decoder = BPDecoder::new(&channel, &parity_check);
-    ///
-    /// assert_eq!(decoder.is_codeword(&vec![GF2::B0; 3]), true);
-    /// assert_eq!(decoder.is_codeword(&vec![GF2::B0, GF2::B1, GF2::B0]), false);
-    /// ```
-    pub fn is_codeword(&self, message: &[GF2]) -> bool {
-        self.parity_check.dot(message).iter().all(|x| x == &GF2::B0)
     }
 
     /// Returns the number of bits in `self`.
