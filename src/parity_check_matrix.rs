@@ -105,6 +105,11 @@ impl ParityCheckMatrix {
             .all(|check| check.dot(message) == GF2::B0)
     }
 
+    /// Returns `true` is there is no value in `self`.
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     /// Returns the number of 1 in `self`.
     pub fn len(&self) -> usize {
         self.bit_indices.len()
@@ -144,11 +149,11 @@ impl ParityCheckMatrix {
             n_elements += check.len();
             check_ranges.push(n_elements);
             check.sort();
-            check.last().map(|c| {
+            if let Some(c) = check.last() {
                 if (c + 1) > n_bits {
                     n_bits = c + 1
                 }
-            });
+            }
             bit_indices.append(check);
         }
 
@@ -266,7 +271,9 @@ impl<'a> Check<'a> {
     pub fn dot(&self, other: &[GF2]) -> GF2 {
         let mut total = GF2::B0;
         self.positions.iter().for_each(|&pos| {
-            other.get(pos).map(|&value| total = total + value);
+            if let Some(&value) = other.get(pos) {
+                total = total + value;
+            }
         });
         total
     }
@@ -333,10 +340,9 @@ impl Ranker {
     fn new(matrix: &ParityCheckMatrix) -> Self {
         let mut checks = vec![Vec::new(); matrix.n_bits()];
         matrix.checks_iter().for_each(|check| {
-            check
-                .positions()
-                .first()
-                .map(|col| checks[*col].push(check.positions().to_vec()));
+            if let Some(col) = check.positions().first() {
+                checks[*col].push(check.positions().to_vec());
+            }
         });
         Self {
             checks,
@@ -345,7 +351,7 @@ impl Ranker {
     }
 
     fn rank(&mut self) -> usize {
-        self.to_echelon_form();
+        self.echelon_form();
         let mut r = 0;
         for col in 0..self.n_cols {
             if !self.checks[col].is_empty() {
@@ -372,7 +378,7 @@ impl Ranker {
         }
     }
 
-    fn to_echelon_form(&mut self) {
+    fn echelon_form(&mut self) {
         for col in 0..self.n_cols {
             self.eliminate_col(col);
         }

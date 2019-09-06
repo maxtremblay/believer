@@ -134,7 +134,7 @@ impl Transposer {
             values: self
                 .indices
                 .iter()
-                .map(|idx| matrix.values()[*idx].clone())
+                .map(|idx| matrix.values()[*idx])
                 .collect(),
             row_ranges: &self.row_ranges,
             column_indices: &self.column_indices,
