@@ -392,6 +392,19 @@ mod test {
     use super::*;
 
     #[test]
+    fn checks_iterator() {
+        let parity_check = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2]]);
+        let mut iter = parity_check.checks_iter();
+
+        assert_eq!(iter.next(), parity_check.check(0));
+        assert_eq!(iter.next(), parity_check.check(1));
+        assert_eq!(iter.next(), None);
+
+        assert_eq!(parity_check.check(0).unwrap().positions(), &[0, 1]);
+        assert_eq!(parity_check.check(1).unwrap().positions(), &[1, 2]); 
+    }
+
+    #[test]
     fn dot_product() {
         let parity_check = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2]]);
         let bits = vec![GF2::B0, GF2::B1, GF2::B1];
