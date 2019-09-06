@@ -34,11 +34,12 @@ impl<'a> SparseMatrix<'a> {
             self.row_ranges.get(row + 1).map(|&row_end| {
                 println!("Row start and end: {} & {}", row_start, row_end);
                 println!("Val, col,: {:?}, {:?}", self.values, self.column_indices);
-            RowSlice {
-                values: &self.values[row_start..row_end],
-                positions: &self.column_indices[row_start..row_end],
-                active: 0,
-            }})
+                RowSlice {
+                    values: &self.values[row_start..row_end],
+                    positions: &self.column_indices[row_start..row_end],
+                    active: 0,
+                }
+            })
         })
     }
 

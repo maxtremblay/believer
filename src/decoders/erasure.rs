@@ -1,5 +1,7 @@
 //! A classical erasure decoder.
 
-pub struct ErasureDecoder {
+use crate::ParityCheckMatrix;
 
-} 
+pub struct ErasureDecoder<'a> {
+    parity_check: &'a ParityCheckMatrix,
+}

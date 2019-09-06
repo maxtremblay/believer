@@ -111,9 +111,12 @@ mod test {
     #[test]
     fn binary_symmetric_channel() {
         let channel = BinarySymmetricChannel::new(0.2);
-        
+
         assert_eq!(channel.intrinsic_likelyhood(GF2::B0), -2.0);
         assert_eq!(channel.intrinsic_likelyhood(GF2::B1), 2.0);
-        assert_eq!(channel.message_likelyhood(&[GF2::B1, GF2::B0, GF2::B1]), vec![2.0, -2.0, 2.0]);
+        assert_eq!(
+            channel.message_likelyhood(&[GF2::B1, GF2::B0, GF2::B1]),
+            vec![2.0, -2.0, 2.0]
+        );
     }
 }

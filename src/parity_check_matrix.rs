@@ -85,9 +85,9 @@ impl ParityCheckMatrix {
     }
 
     /// Checks if a given `message` is a codeword of `self`.
-    /// 
+    ///
     /// # Example
-    /// 
+    ///
     /// ```
     /// # use believer::*;
     /// let parity_check = ParityCheckMatrix::new(vec![
@@ -96,12 +96,13 @@ impl ParityCheckMatrix {
     /// ]);
     /// let message = vec![GF2::B0, GF2::B1, GF2::B1];
     /// let codeword = vec![GF2::B0; 3];
-    /// 
+    ///
     /// assert_eq!(parity_check.has_codeword(&message), false);
     /// assert_eq!(parity_check.has_codeword(&codeword), true);
     /// ```
     pub fn has_codeword(&self, message: &[GF2]) -> bool {
-        self.checks_iter().all(|check| check.dot(message) == GF2::B0)
+        self.checks_iter()
+            .all(|check| check.dot(message) == GF2::B0)
     }
 
     /// Returns the number of 1 in `self`.
@@ -461,11 +462,8 @@ mod test {
 
     #[test]
     fn size() {
-        let parity_check = ParityCheckMatrix::new(vec![
-            vec![0, 1],
-            vec![1, 2],
-        ]);
-        
+        let parity_check = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2]]);
+
         assert_eq!(parity_check.len(), 4);
         assert_eq!(parity_check.n_bits(), 3);
         assert_eq!(parity_check.n_checks(), 2);
