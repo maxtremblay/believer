@@ -39,6 +39,7 @@ pub trait BinaryChannel: Sync {
     /// probability distribution depending on the channel.
     fn send(&self, input: GF2) -> GF2;
 
+    // Returns the likelyhood of a given message.
     fn message_likelyhood(&self, output: &[GF2]) -> Vec<f64> {
         output
             .iter()
@@ -100,5 +101,19 @@ impl BinaryChannel for BinarySymmetricChannel {
         } else {
             input
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn binary_symmetric_channel() {
+        let channel = BinarySymmetricChannel::new(0.2);
+        
+        assert_eq!(channel.intrinsic_likelyhood(GF2::B0), -2.0);
+        assert_eq!(channel.intrinsic_likelyhood(GF2::B1), 2.0);
+        assert_eq!(channel.message_likelyhood(&[GF2::B1, GF2::B0, GF2::B1]), vec![2.0, -2.0, 2.0]);
     }
 }
