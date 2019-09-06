@@ -60,11 +60,9 @@ impl ParityCheckMatrix {
     /// ```
     pub fn check(&self, check: usize) -> Option<Check> {
         self.check_ranges.get(check).and_then(|&check_start| {
-            self.check_ranges
-                .get(check + 1)
-                .map(|&check_end| Check {
-                    positions: &self.bit_indices[check_start..check_end],
-                })
+            self.check_ranges.get(check + 1).map(|&check_end| Check {
+                positions: &self.bit_indices[check_start..check_end],
+            })
         })
     }
 
@@ -221,11 +219,11 @@ pub struct Check<'a> {
 }
 
 impl<'a> Check<'a> {
-    /// Returns the dot product between `self` and `other`. In that case, it corresponds to the 
+    /// Returns the dot product between `self` and `other`. In that case, it corresponds to the
     /// parity of the overlap.
-    /// 
-    /// # Example 
-    /// 
+    ///
+    /// # Example
+    ///
     /// ```
     /// # use believer::*;
     /// let parity_check = ParityCheckMatrix::new(vec![
@@ -234,7 +232,7 @@ impl<'a> Check<'a> {
     ///     vec![0, 2, 3, 6],
     /// ]);
     /// let other = vec![GF2::B0, GF2::B1, GF2::B0, GF2::B1, GF2::B0, GF2::B1, GF2::B0];
-    /// 
+    ///
     /// assert_eq!(parity_check.check(0).unwrap().dot(&other), GF2::B1);
     /// assert_eq!(parity_check.check(1).unwrap().dot(&other), GF2::B1);
     /// assert_eq!(parity_check.check(2).unwrap().dot(&other), GF2::B1);
@@ -248,16 +246,16 @@ impl<'a> Check<'a> {
     }
 
     /// Returns the positions of the bits in `self`.
-    /// 
-    /// # Example 
-    /// 
+    ///
+    /// # Example
+    ///
     /// ```
     /// # use believer::*;
     /// let parity_check = ParityCheckMatrix::new(vec![
     ///     vec![0, 1],
     ///     vec![1, 2],
     /// ]);
-    /// 
+    ///
     /// assert_eq!(parity_check.check(0).unwrap().positions(), &[0, 1]);
     /// assert_eq!(parity_check.check(0).unwrap().positions(), &[1, 2]);
     /// ```
@@ -266,7 +264,7 @@ impl<'a> Check<'a> {
     }
 }
 
-/// An iterator over the position where a parity check matrix is 1. 
+/// An iterator over the position where a parity check matrix is 1.
 /// It is ordered by row and then by col.
 pub struct PositionsIter<'a> {
     active_check: usize,
@@ -401,7 +399,7 @@ mod test {
         assert_eq!(iter.next(), None);
 
         assert_eq!(parity_check.check(0).unwrap().positions(), &[0, 1]);
-        assert_eq!(parity_check.check(1).unwrap().positions(), &[1, 2]); 
+        assert_eq!(parity_check.check(1).unwrap().positions(), &[1, 2]);
     }
 
     #[test]
