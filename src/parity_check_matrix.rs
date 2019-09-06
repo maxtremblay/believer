@@ -2,6 +2,11 @@
 
 use crate::GF2;
 
+// *******************
+// Parity Check Matrix
+// *******************
+
+/// A sparse parity check matrix.
 #[derive(Debug, PartialEq)]
 pub struct ParityCheckMatrix {
     check_ranges: Vec<usize>,
@@ -10,6 +15,59 @@ pub struct ParityCheckMatrix {
 }
 
 impl ParityCheckMatrix {
+    // *
+    // Public methods
+    // *
+
+    /// Returns an iterator that yields a slice for each check of `self`.
+    ///
+    /// # Example
+    /// ```
+    /// # use::believer::*;
+    /// let parity_check = ParityCheckMatrix::new(vec![
+    ///     vec![0, 1],
+    ///     vec![1, 2],
+    /// ]);
+    /// let mut iter = parity_check.checks_iter();
+    ///
+    /// assert_eq!(iter.next(), parity_check.check(0));
+    /// assert_eq!(iter.next(), parity_check.check(1));
+    /// assert_eq!(iter.next(), None);
+    ///
+    /// ```
+    pub fn checks_iter(&self) -> ChecksIter {
+        ChecksIter {
+            matrix: &self,
+            active_check: 0,
+        }
+    }
+
+    /// Returns `Some` slice of the given `check` in `self`. Returns `None` if
+    /// `check` is out of bound.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use believer::*;
+    /// let parity_check = ParityCheckMatrix::new(vec![
+    ///     vec![0, 1],
+    ///     vec![1, 2],
+    /// ]);
+    /// let slice = parity_check.check(0).unwrap();
+    /// let vector = vec![GF2::B1, GF2::B1, GF2::B0];
+    ///
+    /// assert_eq!(slice.dot(&vector), GF2::B0);
+    /// ```
+    pub fn check(&self, check: usize) -> Option<Check> {
+        self.check_ranges.get(check).and_then(|&check_start| {
+            self.check_ranges
+                .get(check + 1)
+                .map(|&check_end| Check {
+                    positions: &self.bit_indices[check_start..check_end],
+                })
+        })
+    }
+
     /// Computes the dot product between `self` and a binary vector.
     ///
     /// # Example
@@ -25,17 +83,15 @@ impl ParityCheckMatrix {
     /// assert_eq!(parity_check.dot(&vector), vec![GF2::B1, GF2::B0]);
     /// ```
     pub fn dot(&self, vector: &[GF2]) -> Vec<GF2> {
-        self.rows_iter().map(|row| row.dot(vector)).collect()
+        self.checks_iter().map(|check| check.dot(vector)).collect()
     }
 
-    pub fn len(&self) -> usize {
-        self.bit_indices.len()
-    }
-
+    /// Returns the number of bits in `self`.
     pub fn n_bits(&self) -> usize {
         self.n_bits
     }
 
+    /// Returns the number of checks in `self`.
     pub fn n_checks(&self) -> usize {
         self.check_ranges().len() - 1
     }
@@ -79,91 +135,110 @@ impl ParityCheckMatrix {
         }
     }
 
-    pub fn check_ranges(&self) -> &[usize] {
-        &self.check_ranges
-    }
-
-    pub fn bit_indices(&self) -> &[usize] {
-        &self.bit_indices
-    }
-
+    /// positions are ordered by check first.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use believer::*;
+    /// let parity_check = ParityCheckMatrix::new(vec![
+    ///     vec![0, 1],
+    ///     vec![1, 2],
+    /// ]);
+    /// let mut iter = parity_check.positions_iter();
+    ///
+    /// assert_eq!(iter.next(), Some((0, 0)));
+    /// assert_eq!(iter.next(), Some((0, 1)));
+    /// assert_eq!(iter.next(), Some((1, 1)));
+    /// assert_eq!(iter.next(), Some((1, 2)));
+    /// assert_eq!(iter.next(), None);
+    /// ```
     pub fn positions_iter(&self) -> PositionsIter {
         PositionsIter {
-            active_row: 0,
+            active_check: 0,
             index: 0,
             check_ranges: &self.check_ranges,
             bit_indices: &self.bit_indices,
         }
     }
 
-    /// Returns `Some` slice of the given `row` in `self`. Returns `None` if
-    /// `row` is out of bound.
+    /// Computes the rank of `self`.
     ///
     /// # Example
-    /// ```
-    /// # use::believer::*;
-    /// let parity_check = ParityCheckMatrix::new(vec![
-    ///     vec![0, 1],    
-    ///     vec![1, 2],
-    /// ]);
-    /// let slice = parity_check.row_slice(0).unwrap();
-    /// let vector = vec![GF2::B1, GF2::B1, GF2::B0];
     ///
-    /// assert_eq!(slice.dot(&vector), GF2::B0);
     /// ```
-    pub fn row_slice(&self, row: usize) -> Option<RowSlice> {
-        self.check_ranges.get(row).and_then(|&row_start| {
-            self.check_ranges.get(row + 1).map(|&row_end| RowSlice {
-                positions: &self.bit_indices[row_start..row_end],
-            })
-        })
+    /// # use believer::*;
+    /// let parity_check = ParityCheckMatrix::new(vec![
+    ///     vec![0, 1],
+    ///     vec![1, 2],
+    ///     vec![0, 2],
+    /// ]);
+    /// assert_eq!(parity_check.rank(), 2);
+    /// ```
+    pub fn rank(&self) -> usize {
+        Ranker::new(self).rank()
     }
 
-    /// Returns an iterator that yields a slice for each row of `self`.
-    ///
-    /// # Example
-    /// ```
-    /// # use::believer::*;
-    /// let parity_check = ParityCheckMatrix::new(vec![
-    ///     vec![0, 1],    
-    ///     vec![1, 2],
-    /// ]);
-    /// let mut iter = parity_check.rows_iter();
-    ///
-    /// assert_eq!(iter.next(), parity_check.row_slice(0));
-    /// assert_eq!(iter.next(), parity_check.row_slice(1));
-    /// assert_eq!(iter.next(), None);
-    ///
-    /// ```
-    pub fn rows_iter(&self) -> RowsIter {
-        RowsIter {
-            matrix: &self,
-            active_row: 0,
-        }
+    // *
+    // Private methods
+    // *
+
+    // Returns a reference to `self.check_ranges`.
+    pub(crate) fn check_ranges(&self) -> &[usize] {
+        &self.check_ranges
+    }
+
+    // Returns a reference to `self.bit_indices
+    pub(crate) fn bit_indices(&self) -> &[usize] {
+        &self.bit_indices
     }
 }
 
-pub struct RowsIter<'a> {
+// ************************
+// Public utilitary structs
+// ************************
+
+/// Iterator over the checks of a parity check matrix.
+pub struct ChecksIter<'a> {
     matrix: &'a ParityCheckMatrix,
-    active_row: usize,
+    active_check: usize,
 }
 
-impl<'a> Iterator for RowsIter<'a> {
-    type Item = RowSlice<'a>;
+impl<'a> Iterator for ChecksIter<'a> {
+    type Item = Check<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let slice = self.matrix.row_slice(self.active_row);
-        self.active_row += 1;
+        let slice = self.matrix.check(self.active_check);
+        self.active_check += 1;
         slice
     }
 }
 
+/// A wrapper over a check. It contains the positions of the bits in the check.
 #[derive(Debug, PartialEq)]
-pub struct RowSlice<'a> {
+pub struct Check<'a> {
     positions: &'a [usize],
 }
 
-impl<'a> RowSlice<'a> {
+impl<'a> Check<'a> {
+    /// Returns the dot product between `self` and `other`. In that case, it corresponds to the 
+    /// parity of the overlap.
+    /// 
+    /// # Example 
+    /// 
+    /// ```
+    /// # use believer::*;
+    /// let parity_check = ParityCheckMatrix::new(vec![
+    ///     vec![0, 1, 2, 4],
+    ///     vec![0, 1, 3, 5],
+    ///     vec![0, 2, 3, 6],
+    /// ]);
+    /// let other = vec![GF2::B0, GF2::B1, GF2::B0, GF2::B1, GF2::B0, GF2::B1, GF2::B0];
+    /// 
+    /// assert_eq!(parity_check.check(0).unwrap().dot(&other), GF2::B1);
+    /// assert_eq!(parity_check.check(1).unwrap().dot(&other), GF2::B1);
+    /// assert_eq!(parity_check.check(2).unwrap().dot(&other), GF2::B1);
+    /// ```
     pub fn dot(&self, other: &[GF2]) -> GF2 {
         let mut total = GF2::B0;
         self.positions.iter().for_each(|&pos| {
@@ -172,13 +247,29 @@ impl<'a> RowSlice<'a> {
         total
     }
 
+    /// Returns the positions of the bits in `self`.
+    /// 
+    /// # Example 
+    /// 
+    /// ```
+    /// # use believer::*;
+    /// let parity_check = ParityCheckMatrix::new(vec![
+    ///     vec![0, 1],
+    ///     vec![1, 2],
+    /// ]);
+    /// 
+    /// assert_eq!(parity_check.check(0).unwrap().positions(), &[0, 1]);
+    /// assert_eq!(parity_check.check(0).unwrap().positions(), &[1, 2]);
+    /// ```
     pub fn positions(&self) -> &[usize] {
         self.positions
     }
 }
 
+/// An iterator over the position where a parity check matrix is 1. 
+/// It is ordered by row and then by col.
 pub struct PositionsIter<'a> {
-    active_row: usize,
+    active_check: usize,
     index: usize,
     check_ranges: &'a [usize],
     bit_indices: &'a [usize],
@@ -189,31 +280,146 @@ impl<'a> Iterator for PositionsIter<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         self.check_ranges
-            .get(self.active_row + 1)
-            .and_then(|&row_end| {
-                if self.index >= row_end {
-                    self.active_row += 1;
+            .get(self.active_check + 1)
+            .and_then(|&check_end| {
+                if self.index >= check_end {
+                    self.active_check += 1;
                 }
                 let position = self
                     .bit_indices
                     .get(self.index)
-                    .map(|&col| (self.active_row, col));
+                    .map(|&col| (self.active_check, col));
                 self.index += 1;
                 position
             })
     }
 }
 
+// *************************
+// Private utilitary structs
+// *************************
+
+// Helper struct to compute the rank of a parity check matrix.
+struct Ranker {
+    checks: Vec<Vec<Vec<usize>>>,
+    n_cols: usize,
+}
+
+impl Ranker {
+    fn new(matrix: &ParityCheckMatrix) -> Self {
+        let mut checks = vec![Vec::new(); matrix.n_bits()];
+        matrix.checks_iter().for_each(|check| {
+            check
+                .positions()
+                .first()
+                .map(|col| checks[*col].push(check.positions().to_vec()));
+        });
+        Self {
+            checks,
+            n_cols: matrix.n_bits(),
+        }
+    }
+
+    fn rank(&mut self) -> usize {
+        self.to_echelon_form();
+        let mut r = 0;
+        for col in 0..self.n_cols {
+            if !self.checks[col].is_empty() {
+                r += 1;
+            }
+        }
+        r
+    }
+
+    // Private methodes
+
+    fn eliminate_col(&mut self, col: usize) {
+        if let Some(pivot_check) = self.checks[col].pop() {
+            while let Some(other_check) = self.checks[col].pop() {
+                self.insert(add_checks(&pivot_check, &other_check));
+            }
+            self.checks[col].push(pivot_check)
+        }
+    }
+
+    fn insert(&mut self, check: Vec<usize>) {
+        if let Some(&x) = check.first() {
+            self.checks[x].push(check);
+        }
+    }
+
+    fn to_echelon_form(&mut self) {
+        for col in 0..self.n_cols {
+            self.eliminate_col(col);
+        }
+    }
+}
+
+fn add_checks(check_0: &[usize], check_1: &[usize]) -> Vec<usize> {
+    let mut sum = Vec::with_capacity(check_0.len() + check_1.len());
+    let mut iter_0 = check_0.iter().peekable();
+    let mut iter_1 = check_1.iter().peekable();
+    loop {
+        match (iter_0.peek(), iter_1.peek()) {
+            (Some(&&v), None) => {
+                sum.push(v);
+                iter_0.next();
+            }
+            (None, Some(&&v)) => {
+                sum.push(v);
+                iter_1.next();
+            }
+            (Some(&&v_0), Some(&&v_1)) => {
+                if v_0 < v_1 {
+                    sum.push(v_0);
+                    iter_0.next();
+                } else if v_0 > v_1 {
+                    sum.push(v_1);
+                    iter_1.next();
+                } else {
+                    iter_0.next();
+                    iter_1.next();
+                }
+            }
+            (None, None) => break,
+        }
+    }
+    sum
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
+
     #[test]
     fn dot_product() {
         let parity_check = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2]]);
         let bits = vec![GF2::B0, GF2::B1, GF2::B1];
 
-        assert_eq!(parity_check.row_slice(0).unwrap().dot(&bits), GF2::B1);
-        assert_eq!(parity_check.row_slice(1).unwrap().dot(&bits), GF2::B0);
+        assert_eq!(parity_check.check(0).unwrap().dot(&bits), GF2::B1);
+        assert_eq!(parity_check.check(1).unwrap().dot(&bits), GF2::B0);
         assert_eq!(parity_check.dot(&bits), vec![GF2::B1, GF2::B0]);
+    }
+
+    #[test]
+    fn positions_iterator() {
+        let parity_check = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2]]);
+        let mut iter = parity_check.positions_iter();
+
+        assert_eq!(iter.next(), Some((0, 0)));
+        assert_eq!(iter.next(), Some((0, 1)));
+        assert_eq!(iter.next(), Some((1, 1)));
+        assert_eq!(iter.next(), Some((1, 2)));
+        assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn rank() {
+        let parity_check_0 =
+            ParityCheckMatrix::new(vec![vec![0, 1, 2, 4], vec![0, 1, 3, 5], vec![0, 2, 3, 6]]);
+        assert_eq!(parity_check_0.rank(), 3);
+
+        let parity_check_1 = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2], vec![0, 2]]);
+        assert_eq!(parity_check_1.rank(), 2);
     }
 }

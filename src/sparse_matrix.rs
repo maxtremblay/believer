@@ -11,7 +11,7 @@ pub(crate) struct SparseMatrix<'a> {
 
 impl<'a> SparseMatrix<'a> {
     pub(crate) fn from_parity_check(parity_check: &'a ParityCheckMatrix, values: Vec<f64>) -> Self {
-        if parity_check.len() != values.len() {
+        if parity_check.n_bits() != values.len() {
             panic!("wrong number of values");
         }
         Self {
@@ -103,8 +103,8 @@ pub(crate) struct Transposer {
 
 impl Transposer {
     pub(crate) fn new(parity_check: &ParityCheckMatrix) -> Self {
-        let mut indices = Vec::with_capacity(parity_check.len());
-        let mut column_indices = Vec::with_capacity(parity_check.len());
+        let mut indices = Vec::with_capacity(parity_check.n_bits());
+        let mut column_indices = Vec::with_capacity(parity_check.n_bits());
         let mut row_ranges = Vec::new();
         row_ranges.push(0);
 

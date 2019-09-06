@@ -179,8 +179,10 @@ impl<'a, C: BinaryChannel> Decoder<'a, C> {
     fn init_likelyhoods(&self, message: &[GF2]) -> Likelyhoods<C> {
         let intrinsec = self.channel.message_likelyhood(message);
         let total = intrinsec.clone();
-        let extrinsec =
-            SparseMatrix::from_parity_check(self.parity_check, vec![0.0; self.parity_check.len()]);
+        let extrinsec = SparseMatrix::from_parity_check(
+            self.parity_check,
+            vec![0.0; self.parity_check.n_bits()],
+        );
         Likelyhoods {
             decoder: &self,
             total,
