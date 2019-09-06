@@ -3,8 +3,8 @@
 pub mod channel;
 pub use channel::BinaryChannel;
 
-pub mod decoder;
-pub use decoder::{Decoder, DecodingResult};
+pub mod decoders;
+pub use decoders::{BPDecoder, BPResult};
 
 pub mod gf2;
 pub use gf2::GF2;
