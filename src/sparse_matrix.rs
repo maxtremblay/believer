@@ -11,7 +11,7 @@ pub(crate) struct SparseMatrix<'a> {
 
 impl<'a> SparseMatrix<'a> {
     pub(crate) fn from_parity_check(parity_check: &'a ParityCheckMatrix, values: Vec<f64>) -> Self {
-        if parity_check.n_bits() != values.len() {
+        if parity_check.len() != values.len() {
             panic!("wrong number of values");
         }
         Self {
@@ -29,12 +29,16 @@ impl<'a> SparseMatrix<'a> {
     }
 
     pub(crate) fn row_slice(&self, row: usize) -> Option<RowSlice> {
+        println!("*****");
         self.row_ranges.get(row).and_then(|&row_start| {
-            self.row_ranges.get(row + 1).map(|&row_end| RowSlice {
+            self.row_ranges.get(row + 1).map(|&row_end| {
+                println!("Row start and end: {} & {}", row_start, row_end);
+                println!("Val, col,: {:?}, {:?}", self.values, self.column_indices);
+            RowSlice {
                 values: &self.values[row_start..row_end],
                 positions: &self.column_indices[row_start..row_end],
                 active: 0,
-            })
+            }})
         })
     }
 
@@ -58,6 +62,7 @@ impl<'a> Iterator for RowsIter<'a> {
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct RowSlice<'a> {
     values: &'a [f64],
     positions: &'a [usize],

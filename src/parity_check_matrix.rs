@@ -84,6 +84,11 @@ impl ParityCheckMatrix {
         self.checks_iter().map(|check| check.dot(vector)).collect()
     }
 
+    /// Returns the number of 1 in `self`.
+    pub fn len(&self) -> usize {
+        self.bit_indices.len()
+    }
+
     /// Returns the number of bits in `self`.
     pub fn n_bits(&self) -> usize {
         self.n_bits
@@ -257,7 +262,7 @@ impl<'a> Check<'a> {
     /// ]);
     ///
     /// assert_eq!(parity_check.check(0).unwrap().positions(), &[0, 1]);
-    /// assert_eq!(parity_check.check(0).unwrap().positions(), &[1, 2]);
+    /// assert_eq!(parity_check.check(1).unwrap().positions(), &[1, 2]);
     /// ```
     pub fn positions(&self) -> &[usize] {
         self.positions
@@ -432,5 +437,17 @@ mod test {
 
         let parity_check_1 = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2], vec![0, 2]]);
         assert_eq!(parity_check_1.rank(), 2);
+    }
+
+    #[test]
+    fn size() {
+        let parity_check = ParityCheckMatrix::new(vec![
+            vec![0, 1],
+            vec![1, 2],
+        ]);
+        
+        assert_eq!(parity_check.len(), 4);
+        assert_eq!(parity_check.n_bits(), 3);
+        assert_eq!(parity_check.n_checks(), 2);
     }
 }

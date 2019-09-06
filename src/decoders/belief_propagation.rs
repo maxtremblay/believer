@@ -63,7 +63,7 @@ impl<'a, C: BinaryChannel> BPDecoder<'a, C> {
     ///     vec![1, 2],
     ///     vec![2, 3],
     /// ]);
-    /// let decoder = BeliefPropagation::new(&channel, &parity_check);
+    /// let decoder = BPDecoder::new(&channel, &parity_check);
     ///
     /// // Should be able to decode this message to the 1 codeword.
     /// let easy_message = vec![GF2::B0, GF2::B1, GF2::B1, GF2::B1];
@@ -123,7 +123,7 @@ impl<'a, C: BinaryChannel> BPDecoder<'a, C> {
     /// ]);
     ///
     /// // The decoder
-    /// let decoder = BeliefPropagator::new(&channel, &parity_check);
+    /// let decoder = BPDecoder::new(&channel, &parity_check);
     /// ```
     pub fn new(channel: &'a C, parity_check: &'a ParityCheckMatrix) -> Self {
         Self {
@@ -146,7 +146,7 @@ impl<'a, C: BinaryChannel> BPDecoder<'a, C> {
     ///     vec![2, 3],
     ///     vec![3, 4],
     /// ]);
-    /// let decoder = Decoder::new(&channel, &parity_check);
+    /// let decoder = BPDecoder::new(&channel, &parity_check);
     ///
     /// assert_eq!(decoder.n_bits(), 5);
     /// ```
@@ -167,7 +167,7 @@ impl<'a, C: BinaryChannel> BPDecoder<'a, C> {
     ///     vec![2, 3],
     ///     vec![3, 4],
     /// ]);
-    /// let decoder = Decoder::new(&channel, &parity_check);
+    /// let decoder = BPDecoder::new(&channel, &parity_check);
     ///
     /// assert_eq!(decoder.n_checks(), 4);
     /// ```
@@ -181,7 +181,7 @@ impl<'a, C: BinaryChannel> BPDecoder<'a, C> {
         let total = intrinsec.clone();
         let extrinsec = SparseMatrix::from_parity_check(
             self.parity_check,
-            vec![0.0; self.parity_check.n_bits()],
+            vec![0.0; self.parity_check.len()],
         );
         Likelyhoods {
             decoder: &self,
@@ -205,7 +205,7 @@ impl<'a, C: BinaryChannel> BPDecoder<'a, C> {
     ///     vec![0, 1],
     ///     vec![1, 2],
     /// ]);
-    /// let decoder = Decoder::new(&channel, &parity_check);
+    /// let decoder = BPDecoder::new(&channel, &parity_check);
     ///
     /// assert_eq!(decoder.is_codeword(&vec![GF2::B0; 3]), true);
     /// assert_eq!(decoder.is_codeword(&vec![GF2::B0, GF2::B1, GF2::B0]), false);
@@ -255,10 +255,13 @@ impl<'a, C: BinaryChannel> Likelyhoods<'a, C> {
             .decoder
             .parity_check
             .positions_iter()
+            .inspect(|p| println!("\nPos: {:?}", p))
             .map(|(row, col)| {
+                println!("-------");
                 self.extrinsec
                     .row_slice(row)
                     .map(|slice| {
+                        println!("Slice: {:?}", slice);
                         -2.0 * slice
                             .filter(|(_, c)| c != &&col)
                             .map(|(val, c)| ((val - self.total[*c]) / 2.0).tanh())
