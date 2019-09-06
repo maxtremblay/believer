@@ -45,6 +45,10 @@ where
 }
 
 impl<'a, C: BinaryChannel> BPDecoder<'a, C> {
+    // * 
+    // Public methods
+    // *
+
     /// Decodes a given `message` doing at most `max_iters` iterations. Returns
     /// `Some(codeword)` if the decoder converge to a solution of `None` if
     /// it didn't find a solution in the given the number of iterations.
@@ -105,32 +109,24 @@ impl<'a, C: BinaryChannel> BPDecoder<'a, C> {
         result.unwrap()
     }
 
-    /// Creates a new decoder from references to a `channel` and a `parity_check` matrix.
+    /// Checks if a `message` is a valid codeword.
     ///
     /// # Example
     ///
     /// ```
     /// # use believer::*;
-    /// // A bsc with error prob 0.2.
     /// let channel = channel::BinarySymmetricChannel::new(0.2);
-    ///
-    /// // A 5 bits repetition code.
     /// let parity_check = ParityCheckMatrix::new(vec![
     ///     vec![0, 1],
     ///     vec![1, 2],
-    ///     vec![2, 3],
-    ///     vec![3, 4],
     /// ]);
-    ///
-    /// // The decoder
     /// let decoder = BPDecoder::new(&channel, &parity_check);
+    ///
+    /// assert_eq!(decoder.is_codeword(&vec![GF2::B0; 3]), true);
+    /// assert_eq!(decoder.is_codeword(&vec![GF2::B0, GF2::B1, GF2::B0]), false);
     /// ```
-    pub fn new(channel: &'a C, parity_check: &'a ParityCheckMatrix) -> Self {
-        Self {
-            channel,
-            parity_check,
-            transposer: Transposer::new(parity_check),
-        }
+    pub fn is_codeword(&self, message: &[GF2]) -> bool {
+        self.parity_check.dot(message).iter().all(|x| x == &GF2::B0)
     }
 
     /// Returns the number of bits in `self`.
@@ -175,7 +171,39 @@ impl<'a, C: BinaryChannel> BPDecoder<'a, C> {
         self.parity_check.n_checks()
     }
 
-    // TO DO
+    /// Creates a new decoder from references to a `channel` and a `parity_check` matrix.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use believer::*;
+    /// // A bsc with error prob 0.2.
+    /// let channel = channel::BinarySymmetricChannel::new(0.2);
+    ///
+    /// // A 5 bits repetition code.
+    /// let parity_check = ParityCheckMatrix::new(vec![
+    ///     vec![0, 1],
+    ///     vec![1, 2],
+    ///     vec![2, 3],
+    ///     vec![3, 4],
+    /// ]);
+    ///
+    /// // The decoder
+    /// let decoder = BPDecoder::new(&channel, &parity_check);
+    /// ```
+    pub fn new(channel: &'a C, parity_check: &'a ParityCheckMatrix) -> Self {
+        Self {
+            channel,
+            parity_check,
+            transposer: Transposer::new(parity_check),
+        }
+    }
+
+    // *
+    // Private methods
+    // *
+
+    // Inits all the likelyhood (total, intrinsec and extrinsec).
     fn init_likelyhoods(&self, message: &[GF2]) -> Likelyhoods<C> {
         let intrinsec = self.channel.message_likelyhood(message);
         let total = intrinsec.clone();
@@ -190,30 +218,11 @@ impl<'a, C: BinaryChannel> BPDecoder<'a, C> {
             extrinsec,
         }
     }
-
-    // NOTE : Maybe implement parity_check.is_codeword(...).
-    // It could be faster if the first 1 is near the beggining of message.
-
-    /// Checks if a `message` is a valid codeword.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # use believer::*;
-    /// let channel = channel::BinarySymmetricChannel::new(0.2);
-    /// let parity_check = ParityCheckMatrix::new(vec![
-    ///     vec![0, 1],
-    ///     vec![1, 2],
-    /// ]);
-    /// let decoder = BPDecoder::new(&channel, &parity_check);
-    ///
-    /// assert_eq!(decoder.is_codeword(&vec![GF2::B0; 3]), true);
-    /// assert_eq!(decoder.is_codeword(&vec![GF2::B0, GF2::B1, GF2::B0]), false);
-    /// ```
-    pub fn is_codeword(&self, message: &[GF2]) -> bool {
-        self.parity_check.dot(message).iter().all(|x| x == &GF2::B0)
-    }
 }
+
+// ****************************
+// Public utilitary constructs
+// ****************************
 
 /// The possible results of the decoding process.
 ///
@@ -226,6 +235,10 @@ pub enum BPResult {
     GotStuck,
     ReachedMaxIter,
 }
+
+// ****************************
+// Private utilitary constructs
+// ****************************
 
 struct Likelyhoods<'a, C>
 where
@@ -255,13 +268,10 @@ impl<'a, C: BinaryChannel> Likelyhoods<'a, C> {
             .decoder
             .parity_check
             .positions_iter()
-            .inspect(|p| println!("\nPos: {:?}", p))
             .map(|(row, col)| {
-                println!("-------");
                 self.extrinsec
                     .row_slice(row)
                     .map(|slice| {
-                        println!("Slice: {:?}", slice);
                         -2.0 * slice
                             .filter(|(_, c)| c != &&col)
                             .map(|(val, c)| ((val - self.total[*c]) / 2.0).tanh())
