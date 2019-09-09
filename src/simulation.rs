@@ -1,19 +1,11 @@
 //! Toolbox to simulate error correction codes performance.
 
-use crate::{BPDecoder, BPResult, BinaryChannel, ErasureDecoder, ErasureResult, ParityCheckMatrix};
+use crate::{ErasureDecoder, ErasureResult, ParityCheckMatrix};
 use rayon::prelude::*;
 
 pub trait Simulator {
     fn simulate(&self) -> SimulationResult;
 }
-
-// pub struct BinaryChannelSimulator<'a, C>
-// where
-//     C: BinaryChannel,
-// {
-//     decoder: BPDecoder<'a, C>,
-
-// }
 
 pub struct ErasureSimulator<'a> {
     decoder: ErasureDecoder<'a>,
