@@ -1,7 +1,7 @@
 # Notes for believer project
 
 ## Erasure decoding pipeline
-- [ ] Implement decoder
+- [x] Implement decoder
 - [ ] Implement simulation tools
 
 ## Random codes generation
@@ -11,11 +11,13 @@
 ## Cleaning
 - [ ] Sparse matrix
 - [x] BP decoder
+- [ ] Erasure decoder
 
 ## Documenting
 - [ ] Sparse matrix
 - [ ] BP decoder
 - [ ] Lib
+- [ ] Erasure decoder
 
 ## Testing
 - [ ] Sparse matrix
