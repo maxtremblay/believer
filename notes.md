@@ -8,6 +8,9 @@
 - [ ] Implement hierarchical codes
 - [ ] Implement decreasing prob codes
 
+## General
+- [ ] Implement Decoder trait for BP
+
 ## Ideas
 - [ ] Implement hypergraph product
 - [ ] Implement generalized bicycle product
@@ -16,16 +19,17 @@
 - [ ] Sparse matrix
 - [x] BP decoder
 - [ ] Erasure decoder
+- [ ] Simulator
 
 ## Documenting
 - [ ] Sparse matrix
 - [ ] BP decoder
 - [ ] Lib
 - [ ] Erasure decoder
-- [ ] Simulators
+- [ ] Simulator
 
 ## Testing
 - [ ] Sparse matrix
 - [x] BP decoder
 - [ ] General
-- [ ] Erasure simulation
+- [ ] Simulator
