@@ -221,6 +221,21 @@ impl ParityCheckMatrix {
     pub(crate) fn bit_indices(&self) -> &[usize] {
         &self.bit_indices
     }
+
+    pub(crate) fn keep(&self, bits: &[usize]) -> Self {
+        let checks = self
+            .checks_iter()
+            .map(|check| {
+                check
+                    .positions()
+                    .iter()
+                    .filter(|&bit| bits.iter().any(|b| b == bit))
+                    .cloned()
+                    .collect()
+            })
+            .collect();
+        ParityCheckMatrix::new(checks)
+    }
 }
 
 // ************************
