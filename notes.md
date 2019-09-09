@@ -2,7 +2,7 @@
 
 ## Erasure decoding pipeline
 - [x] Implement decoder
-- [ ] Implement simulation tools
+- [x] Implement simulation tools
 
 ## Random codes generation
 - [ ] Implement hierarchical codes
@@ -18,8 +18,10 @@
 - [ ] BP decoder
 - [ ] Lib
 - [ ] Erasure decoder
+- [ ] Simulators
 
 ## Testing
 - [ ] Sparse matrix
 - [x] BP decoder
 - [ ] General
+- [ ] Erasure simulation
