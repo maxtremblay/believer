@@ -8,6 +8,10 @@
 - [ ] Implement hierarchical codes
 - [ ] Implement decreasing prob codes
 
+## Ideas
+- [ ] Implement hypergraph product
+- [ ] Implement generalized bicycle product
+
 ## Cleaning
 - [ ] Sparse matrix
 - [x] BP decoder
