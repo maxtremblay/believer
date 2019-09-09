@@ -1,14 +1,9 @@
 use believer::*;
 
 fn main() {
-    let parity_check = ParityCheckMatrix::new(vec![
-        vec![0, 1],
-        vec![1, 2],
-        vec![2, 3],
-        vec![3, 4],
-    ]);
-    let simulator = ErasureSimulator::new(&parity_check, 1, 1, 0.5);
-    let result = simulator.simulate();
-    println!("Failure rate: {}", result.failure_rate());
+    let checks = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2], vec![2, 3], vec![3, 4]]);
+    let decoder = ErasureDecoder::new(&checks, 0.25);
+    let simulator = Simulator::new(&decoder);
+    let result = simulator.simulate_until_failures_are_found(1, 1);
+    println!("Failure rate: {}", result.total());
 }
-

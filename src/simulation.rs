@@ -1,51 +1,57 @@
 //! Toolbox to simulate error correction codes performance.
 
-use crate::{ErasureDecoder, ErasureResult, ParityCheckMatrix};
+use crate::{Decoder, DecodingResult};
 use rayon::prelude::*;
 
-pub trait Simulator {
-    fn simulate(&self) -> SimulationResult;
+pub struct Simulator<'a, D>
+where
+    D: Decoder,
+{
+    decoder: &'a D,
 }
 
-pub struct ErasureSimulator<'a> {
-    decoder: ErasureDecoder<'a>,
-    n_threads: usize,
-    n_failures_per_thread: usize,
-    erasure_prob: f64,
-}
-
-impl<'a> ErasureSimulator<'a> {
-    pub fn new(
-        checks: &'a ParityCheckMatrix,
-        n_threads: usize,
-        n_failures_per_thread: usize,
-        erasure_prob: f64,
-    ) -> Self {
-        if erasure_prob < 0.0 || erasure_prob > 1.0 {
-            panic!("invalid probability");
-        }
+impl<'a, D> Simulator<'a, D>
+where
+    D: Decoder,
+{
+    pub fn new(decoder: &'a D) -> Self {
         Self {
-            decoder: ErasureDecoder::new(checks),
-            n_threads,
-            n_failures_per_thread,
-            erasure_prob,
+            decoder,
         }
     }
-}
 
-impl<'a> Simulator for ErasureSimulator<'a> {
-    fn simulate(&self) -> SimulationResult {
-        let successes = (0..self.n_threads)
+    pub fn simulate_n_iterations(&self, n_iterations: usize) -> SimulationResult {
+        let successes: usize = (0..n_iterations)
+            .into_par_iter()
+            .map::<_, D::Result>(|_| {
+                let error = self.decoder.random_error();
+                self.decoder.decode(error)       
+            })
+            .filter(|decoding| decoding.succeed())
+            .count();
+        
+        SimulationResult {
+            successes,
+            failures: n_iterations - successes
+        }
+    }
+
+    pub fn simulate_until_failures_are_found(
+        &self,
+        n_threads: usize,
+        n_failures_per_thread: usize,
+    ) -> SimulationResult {
+        let successes = (0..n_threads)
             .into_par_iter()
             .map::<_, usize>(|_| {
-                (0..self.n_failures_per_thread)
+                (0..n_failures_per_thread)
                     .into_par_iter()
                     .map(|_| {
                         let mut successes = 0;
                         let mut has_failed = false;
                         while !has_failed {
-                            let erasure_locations = self.decoder.random_erasures(self.erasure_prob);
-                            if self.decoder.decode(&erasure_locations) == ErasureResult::Success {
+                            let error = self.decoder.random_error();
+                            if self.decoder.decode(error).succeed() {
                                 successes += 1;
                             } else {
                                 has_failed = true;
@@ -59,9 +65,20 @@ impl<'a> Simulator for ErasureSimulator<'a> {
 
         SimulationResult {
             successes,
-            failures: self.n_failures_per_thread * self.n_threads,
+            failures: n_failures_per_thread * n_threads,
         }
     }
+}
+
+enum SimulationType {
+    UpTo {
+        n_threads: usize,
+        n_iters_per_thread: usize,
+    },
+    UntilFailuresAreFound {
+        n_threads: usize,
+        n_failures_per_thread: usize,
+    },
 }
 
 pub struct SimulationResult {
@@ -89,4 +106,11 @@ impl SimulationResult {
     pub fn total(&self) -> usize {
         self.failures() + self.successes()
     }
+}
+
+#[cfg(test)]
+
+mod test {
+    use super::*;
+
 }
