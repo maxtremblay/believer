@@ -9,7 +9,8 @@
 - [ ] Implement decreasing prob codes
 
 ## General
-- [ ] Implement Decoder trait for BP
+- [x] Implement Decoder trait for BP
+- [ ] Do a real readme
 
 ## Ideas
 - [ ] Implement hypergraph product
@@ -27,6 +28,7 @@
 - [ ] Lib
 - [ ] Erasure decoder
 - [ ] Simulator
+- [ ] Decoder trait
 
 ## Testing
 - [ ] Sparse matrix

@@ -96,10 +96,3 @@ impl SimulationResult {
         self.failures() + self.successes()
     }
 }
-
-#[cfg(test)]
-
-mod test {
-    use super::*;
-
-}
