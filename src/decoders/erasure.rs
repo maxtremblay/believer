@@ -25,8 +25,8 @@ impl<'a> Decoder for ErasureDecoder<'a> {
     type Error = Vec<usize>;
     type Result = ErasureResult;
 
-    fn decode(&self, error: Self::Error) -> Self::Result {
-        let erased_parity_check = self.checks.keep(&error);
+    fn decode(&self, error: &Self::Error) -> Self::Result {
+        let erased_parity_check = self.checks.keep(error);
         if error.len() - erased_parity_check.rank() == 0 {
             ErasureResult::Succeed
         } else {
@@ -64,14 +64,14 @@ mod test {
         let matrix = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2]]);
         let decoder = ErasureDecoder::new(&matrix, 0.2);
 
-        assert_eq!(decoder.decode(vec![]), ErasureResult::Succeed);
+        assert_eq!(decoder.decode(&vec![]), ErasureResult::Succeed);
         for i in 0..=2 {
-            assert_eq!(decoder.decode(vec![i]), ErasureResult::Succeed);
+            assert_eq!(decoder.decode(&vec![i]), ErasureResult::Succeed);
             for j in (i + 1)..=2 {
-                assert_eq!(decoder.decode(vec![i, j]), ErasureResult::Succeed);
+                assert_eq!(decoder.decode(&vec![i, j]), ErasureResult::Succeed);
             }
         }
-        assert_eq!(decoder.decode(vec![0, 1, 2]), ErasureResult::Failed);
+        assert_eq!(decoder.decode(&vec![0, 1, 2]), ErasureResult::Failed);
     }
 
     #[test]
@@ -80,25 +80,25 @@ mod test {
             ParityCheckMatrix::new(vec![vec![0, 1, 2, 4], vec![0, 1, 3, 5], vec![0, 2, 3, 6]]);
         let decoder = ErasureDecoder::new(&matrix, 0.2);
 
-        assert_eq!(decoder.decode(vec![]), ErasureResult::Succeed);
+        assert_eq!(decoder.decode(&vec![]), ErasureResult::Succeed);
         for i in 0..=6 {
-            assert_eq!(decoder.decode(vec![i]), ErasureResult::Succeed);
+            assert_eq!(decoder.decode(&vec![i]), ErasureResult::Succeed);
             for j in (i + 1)..=6 {
-                assert_eq!(decoder.decode(vec![i, j]), ErasureResult::Succeed);
+                assert_eq!(decoder.decode(&vec![i, j]), ErasureResult::Succeed);
             }
         }
-        assert_eq!(decoder.decode(vec![0, 1, 2]), ErasureResult::Succeed);
-        assert_eq!(decoder.decode(vec![2, 4, 5]), ErasureResult::Succeed);
-        assert_eq!(decoder.decode(vec![0, 1, 4]), ErasureResult::Succeed);
-        assert_eq!(decoder.decode(vec![3, 4, 5]), ErasureResult::Succeed);
+        assert_eq!(decoder.decode(&vec![0, 1, 2]), ErasureResult::Succeed);
+        assert_eq!(decoder.decode(&vec![2, 4, 5]), ErasureResult::Succeed);
+        assert_eq!(decoder.decode(&vec![0, 1, 4]), ErasureResult::Succeed);
+        assert_eq!(decoder.decode(&vec![3, 4, 5]), ErasureResult::Succeed);
 
-        assert_eq!(decoder.decode(vec![2, 4, 6]), ErasureResult::Failed);
-        assert_eq!(decoder.decode(vec![1, 2, 3]), ErasureResult::Failed);
-        assert_eq!(decoder.decode(vec![0, 3, 4]), ErasureResult::Failed);
-        assert_eq!(decoder.decode(vec![0, 2, 5]), ErasureResult::Failed);
+        assert_eq!(decoder.decode(&vec![2, 4, 6]), ErasureResult::Failed);
+        assert_eq!(decoder.decode(&vec![1, 2, 3]), ErasureResult::Failed);
+        assert_eq!(decoder.decode(&vec![0, 3, 4]), ErasureResult::Failed);
+        assert_eq!(decoder.decode(&vec![0, 2, 5]), ErasureResult::Failed);
 
         assert_eq!(
-            decoder.decode(vec![0, 1, 2, 3, 4, 5, 6]),
+            decoder.decode(&vec![0, 1, 2, 3, 4, 5, 6]),
             ErasureResult::Failed
         );
     }

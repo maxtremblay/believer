@@ -7,6 +7,7 @@ use crate::channel::BinaryChannel;
 use crate::sparse_matrix::{SparseMatrix, Transposer};
 use crate::ParityCheckMatrix;
 use crate::GF2;
+use super::{Decoder, DecodingResult};
 
 /// A `BPDecoder` can decode a message received from a given `channel` using a given
 /// `parity_check` matrix.
@@ -26,13 +27,13 @@ use crate::GF2;
 ///     vec![3, 4],
 /// ]);
 ///
-/// let decoder = BPDecoder::new(&channel, &parity_check);
+/// let decoder = BPDecoder::new(&channel, &parity_check, 10);
 ///
 /// // A message with 2 errors.
 /// let received_message = vec![GF2::B1, GF2::B1, GF2::B0, GF2::B0, GF2::B0];
 ///
 /// // Should be decoded to the all zero codeword.
-/// let decoded_message = decoder.decode(&received_message, 10);
+/// let decoded_message = decoder.decode(&received_message);
 /// assert_eq!(decoded_message, BPResult::Codeword(vec![GF2::B0; 5]));
 /// ```
 pub struct BPDecoder<'a, C>
@@ -42,72 +43,13 @@ where
     channel: &'a C,
     parity_check: &'a ParityCheckMatrix,
     transposer: Transposer,
+    max_iters: usize,
 }
 
 impl<'a, C: BinaryChannel> BPDecoder<'a, C> {
     // *
     // Public methods
     // *
-
-    /// Decodes a given `message` doing at most `max_iters` iterations. Returns
-    /// `Some(codeword)` if the decoder converge to a solution of `None` if
-    /// it didn't find a solution in the given the number of iterations.
-    ///
-    /// # Panic
-    ///
-    /// Panics if `message` lenght doesn't correspond to `self.n_bits()`.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # use believer::*;
-    /// let channel = channel::BinarySymmetricChannel::new(0.2);
-    /// let parity_check = ParityCheckMatrix::new(vec![
-    ///     vec![0, 1],
-    ///     vec![1, 2],
-    ///     vec![2, 3],
-    /// ]);
-    /// let decoder = BPDecoder::new(&channel, &parity_check);
-    ///
-    /// // Should be able to decode this message to the 1 codeword.
-    /// let easy_message = vec![GF2::B0, GF2::B1, GF2::B1, GF2::B1];
-    /// let easy_decoded = decoder.decode(&easy_message, 10);
-    /// assert_eq!(easy_decoded, BPResult::Codeword(vec![GF2::B1; 4]));
-    ///
-    /// // Should get stuck while decoding this message.
-    /// let impossible_message = vec![GF2::B0, GF2::B0, GF2::B1, GF2::B1];
-    /// let impossible_decoded = decoder.decode(&impossible_message, 4);
-    /// assert_eq!(impossible_decoded, BPResult::GotStuck);
-    /// ```
-    pub fn decode(&self, message: &[GF2], max_iters: usize) -> BPResult {
-        if message.len() != self.n_bits() {
-            panic!("message doesn't have the right length")
-        }
-
-        let mut likelyhoods = self.init_likelyhoods(message);
-        let mut iter = 0;
-        let mut result = None;
-
-        while result.is_none() {
-            iter += 1;
-
-            likelyhoods.check_node_update();
-            likelyhoods.bit_node_update();
-
-            if iter == max_iters {
-                result = Some(BPResult::ReachedMaxIter);
-            } else if likelyhoods.is_stuck() {
-                result = Some(BPResult::GotStuck);
-            } else {
-                let m: Vec<GF2> = likelyhoods.message();
-                if self.parity_check.has_codeword(&m) {
-                    result = Some(BPResult::Codeword(m));
-                }
-            }
-        }
-
-        result.unwrap()
-    }
 
     /// Returns the number of bits in `self`.
     ///
@@ -122,7 +64,7 @@ impl<'a, C: BinaryChannel> BPDecoder<'a, C> {
     ///     vec![2, 3],
     ///     vec![3, 4],
     /// ]);
-    /// let decoder = BPDecoder::new(&channel, &parity_check);
+    /// let decoder = BPDecoder::new(&channel, &parity_check, 3);
     ///
     /// assert_eq!(decoder.n_bits(), 5);
     /// ```
@@ -143,7 +85,7 @@ impl<'a, C: BinaryChannel> BPDecoder<'a, C> {
     ///     vec![2, 3],
     ///     vec![3, 4],
     /// ]);
-    /// let decoder = BPDecoder::new(&channel, &parity_check);
+    /// let decoder = BPDecoder::new(&channel, &parity_check, 3);
     ///
     /// assert_eq!(decoder.n_checks(), 4);
     /// ```
@@ -167,15 +109,17 @@ impl<'a, C: BinaryChannel> BPDecoder<'a, C> {
     ///     vec![2, 3],
     ///     vec![3, 4],
     /// ]);
-    ///
+    /// let max_iters = 10;
+    /// 
     /// // The decoder
-    /// let decoder = BPDecoder::new(&channel, &parity_check);
+    /// let decoder = BPDecoder::new(&channel, &parity_check, max_iters);
     /// ```
-    pub fn new(channel: &'a C, parity_check: &'a ParityCheckMatrix) -> Self {
+    pub fn new(channel: &'a C, parity_check: &'a ParityCheckMatrix, max_iters: usize) -> Self {
         Self {
             channel,
             parity_check,
             transposer: Transposer::new(parity_check),
+            max_iters,
         }
     }
 
@@ -198,6 +142,78 @@ impl<'a, C: BinaryChannel> BPDecoder<'a, C> {
     }
 }
 
+impl<'a, C> Decoder for BPDecoder<'a, C>
+where 
+    C: BinaryChannel
+{
+    type Error = Vec<GF2>;
+    type Result = BPResult;
+
+    /// Decodes a given `message` doing at most `max_iters` iterations. Returns
+    /// `Some(codeword)` if the decoder converge to a solution of `None` if
+    /// it didn't find a solution in the given the number of iterations.
+    ///
+    /// # Panic
+    ///
+    /// Panics if `message` lenght doesn't correspond to `self.n_bits()`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use believer::*;
+    /// let channel = channel::BinarySymmetricChannel::new(0.2);
+    /// let parity_check = ParityCheckMatrix::new(vec![
+    ///     vec![0, 1],
+    ///     vec![1, 2],
+    ///     vec![2, 3],
+    /// ]);
+    /// let decoder = BPDecoder::new(&channel, &parity_check, 10);
+    ///
+    /// // Should be able to decode this message to the 1 codeword.
+    /// let easy_message = vec![GF2::B0, GF2::B1, GF2::B1, GF2::B1];
+    /// let easy_decoded = decoder.decode(&easy_message);
+    /// assert_eq!(easy_decoded, BPResult::Codeword(vec![GF2::B1; 4]));
+    ///
+    /// // Should get stuck while decoding this message.
+    /// let impossible_message = vec![GF2::B0, GF2::B0, GF2::B1, GF2::B1];
+    /// let impossible_decoded = decoder.decode(&impossible_message);
+    /// assert_eq!(impossible_decoded, BPResult::GotStuck);
+    /// ```
+    fn decode(&self, message: &Self::Error) -> Self::Result {
+        if message.len() != self.n_bits() {
+            panic!("message doesn't have the right length")
+        }
+
+        let mut likelyhoods = self.init_likelyhoods(message);
+        let mut iter = 0;
+        let mut result = None;
+
+        while result.is_none() {
+            iter += 1;
+
+            likelyhoods.check_node_update();
+            likelyhoods.bit_node_update();
+
+            if iter == self.max_iters {
+                result = Some(BPResult::ReachedMaxIter);
+            } else if likelyhoods.is_stuck() {
+                result = Some(BPResult::GotStuck);
+            } else {
+                let m: Vec<GF2> = likelyhoods.message();
+                if self.parity_check.has_codeword(&m) {
+                    result = Some(BPResult::Codeword(m));
+                }
+            }
+        }
+
+        result.unwrap()
+    }
+
+    fn random_error(&self) -> Self::Error {
+        self.channel.sample_uniform(GF2::B0, self.n_bits())
+    }
+}
+
 // ****************************
 // Public utilitary constructs
 // ****************************
@@ -212,6 +228,16 @@ pub enum BPResult {
     Codeword(Vec<GF2>),
     GotStuck,
     ReachedMaxIter,
+}
+
+impl DecodingResult for BPResult {
+    fn succeed(&self) -> bool {
+        if let Self::Codeword(c) = self {
+            c.iter().all(|b| b == &GF2::B0)
+        } else {
+            false
+        }
+    }
 }
 
 // ****************************
@@ -286,13 +312,13 @@ mod test {
         // bsc with error probability of 0.2.s
         let channel = BinarySymmetricChannel::new(0.2);
         let parity_check = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2]]);
-        let decoder = BPDecoder::new(&channel, &parity_check);
+        let decoder = BPDecoder::new(&channel, &parity_check, 5);
 
         // Should decode 1 error.
-        let decoded_message = decoder.decode(&vec![GF2::B0, GF2::B0, GF2::B1], 5);
+        let decoded_message = decoder.decode(&vec![GF2::B0, GF2::B0, GF2::B1]);
         assert_eq!(decoded_message, BPResult::Codeword(vec![GF2::B0; 3]));
 
-        let decoded_message = decoder.decode(&vec![GF2::B1, GF2::B0, GF2::B1], 5);
+        let decoded_message = decoder.decode(&vec![GF2::B1, GF2::B0, GF2::B1]);
         assert_eq!(decoded_message, BPResult::Codeword(vec![GF2::B1; 3]));
     }
 
@@ -300,10 +326,10 @@ mod test {
     fn get_stuck_in_cycle() {
         let channel = BinarySymmetricChannel::new(0.2);
         let parity_check = ParityCheckMatrix::new(vec![vec![0, 1]]);
-        let decoder = BPDecoder::new(&channel, &parity_check);
+        let decoder = BPDecoder::new(&channel, &parity_check, 10);
 
         assert_eq!(
-            decoder.decode(&vec![GF2::B0, GF2::B1], 10),
+            decoder.decode(&vec![GF2::B0, GF2::B1]),
             BPResult::GotStuck
         );
     }

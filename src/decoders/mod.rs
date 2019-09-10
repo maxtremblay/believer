@@ -1,7 +1,7 @@
 pub trait Decoder: Send + Sync {
     type Error;
     type Result: DecodingResult;
-    fn decode(&self, error: Self::Error) -> Self::Result;
+    fn decode(&self, error: &Self::Error) -> Self::Result;
     fn random_error(&self) -> Self::Error;
 }
 

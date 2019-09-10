@@ -25,7 +25,7 @@ where
             .into_par_iter()
             .map::<_, D::Result>(|_| {
                 let error = self.decoder.random_error();
-                self.decoder.decode(error)       
+                self.decoder.decode(&error)       
             })
             .filter(|decoding| decoding.succeed())
             .count();
@@ -51,7 +51,7 @@ where
                         let mut has_failed = false;
                         while !has_failed {
                             let error = self.decoder.random_error();
-                            if self.decoder.decode(error).succeed() {
+                            if self.decoder.decode(&error).succeed() {
                                 successes += 1;
                             } else {
                                 has_failed = true;
@@ -68,17 +68,6 @@ where
             failures: n_failures_per_thread * n_threads,
         }
     }
-}
-
-enum SimulationType {
-    UpTo {
-        n_threads: usize,
-        n_iters_per_thread: usize,
-    },
-    UntilFailuresAreFound {
-        n_threads: usize,
-        n_failures_per_thread: usize,
-    },
 }
 
 pub struct SimulationResult {
