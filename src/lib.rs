@@ -3,6 +3,8 @@
 pub mod channel;
 pub use channel::BinaryChannel;
 
+pub mod code_generation;
+
 pub mod decoders;
 pub use decoders::{BPDecoder, BPResult, Decoder, DecodingResult, ErasureDecoder, ErasureResult};
 
