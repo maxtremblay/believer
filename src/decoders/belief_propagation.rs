@@ -3,11 +3,11 @@
 //! The implementation is based on "Error Correction Coding: Mathematical Methods
 //! and Algorithms (Chapter 15), Todd K. Moon, 2005, Wiley".
 
+use super::{Decoder, DecodingResult};
 use crate::channel::BinaryChannel;
 use crate::sparse_matrix::{SparseMatrix, Transposer};
 use crate::ParityCheckMatrix;
 use crate::GF2;
-use super::{Decoder, DecodingResult};
 
 /// A `BPDecoder` can decode a message received from a given `channel` using a given
 /// `parity_check` matrix.
@@ -110,7 +110,7 @@ impl<'a, C: BinaryChannel> BPDecoder<'a, C> {
     ///     vec![3, 4],
     /// ]);
     /// let max_iters = 10;
-    /// 
+    ///
     /// // The decoder
     /// let decoder = BPDecoder::new(&channel, &parity_check, max_iters);
     /// ```
@@ -143,8 +143,8 @@ impl<'a, C: BinaryChannel> BPDecoder<'a, C> {
 }
 
 impl<'a, C> Decoder for BPDecoder<'a, C>
-where 
-    C: BinaryChannel
+where
+    C: BinaryChannel,
 {
     type Error = Vec<GF2>;
     type Result = BPResult;
@@ -328,9 +328,6 @@ mod test {
         let parity_check = ParityCheckMatrix::new(vec![vec![0, 1]]);
         let decoder = BPDecoder::new(&channel, &parity_check, 10);
 
-        assert_eq!(
-            decoder.decode(&vec![GF2::B0, GF2::B1]),
-            BPResult::GotStuck
-        );
+        assert_eq!(decoder.decode(&vec![GF2::B0, GF2::B1]), BPResult::GotStuck);
     }
 }

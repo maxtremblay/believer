@@ -15,9 +15,7 @@ where
     D: Decoder,
 {
     pub fn new(decoder: &'a D) -> Self {
-        Self {
-            decoder,
-        }
+        Self { decoder }
     }
 
     pub fn simulate_n_iterations(&self, n_iterations: usize) -> SimulationResult {
@@ -25,14 +23,14 @@ where
             .into_par_iter()
             .map::<_, D::Result>(|_| {
                 let error = self.decoder.random_error();
-                self.decoder.decode(&error)       
+                self.decoder.decode(&error)
             })
             .filter(|decoding| decoding.succeed())
             .count();
-        
+
         SimulationResult {
             successes,
-            failures: n_iterations - successes
+            failures: n_iterations - successes,
         }
     }
 
