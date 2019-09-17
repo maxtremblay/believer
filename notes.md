@@ -35,3 +35,7 @@
 - [x] BP decoder
 - [ ] General
 - [ ] Simulator
+
+## Notes
+- Add the number of bits in parity check matrix constructor.
+- 
