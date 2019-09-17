@@ -11,6 +11,7 @@
 ## General
 - [x] Implement Decoder trait for BP
 - [ ] Do a real readme
+- [x] Add the number of bits in parity check matrix constructor.
 
 ## Ideas
 - [ ] Implement hypergraph product
@@ -35,7 +36,3 @@
 - [x] BP decoder
 - [ ] General
 - [ ] Simulator
-
-## Notes
-- Add the number of bits in parity check matrix constructor.
-- 
