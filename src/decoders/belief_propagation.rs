@@ -20,12 +20,15 @@ use crate::GF2;
 /// let channel = channel::BinarySymmetricChannel::new(0.2);
 ///
 /// // A 5 bits repetition code.
-/// let parity_check = ParityCheckMatrix::new(vec![
-///     vec![0, 1],
-///     vec![1, 2],
-///     vec![2, 3],
-///     vec![3, 4],
-/// ]);
+/// let parity_check = ParityCheckMatrix::new(
+///     vec![
+///         vec![0, 1],
+///         vec![1, 2],
+///         vec![2, 3],
+///         vec![3, 4],
+///     ],
+///     5
+/// );
 ///
 /// let decoder = BPDecoder::new(&channel, &parity_check, 10);
 ///
@@ -58,12 +61,15 @@ impl<'a, C: BinaryChannel> BPDecoder<'a, C> {
     /// ```
     /// # use believer::*;
     /// let channel = channel::BinarySymmetricChannel::new(0.2);
-    /// let parity_check = ParityCheckMatrix::new(vec![
-    ///     vec![0, 1],
-    ///     vec![1, 2],
-    ///     vec![2, 3],
-    ///     vec![3, 4],
-    /// ]);
+    /// let parity_check = ParityCheckMatrix::new(
+    ///     vec![
+    ///         vec![0, 1],
+    ///         vec![1, 2],
+    ///         vec![2, 3],
+    ///         vec![3, 4],
+    ///     ],
+    ///     5
+    /// );
     /// let decoder = BPDecoder::new(&channel, &parity_check, 3);
     ///
     /// assert_eq!(decoder.n_bits(), 5);
@@ -79,12 +85,15 @@ impl<'a, C: BinaryChannel> BPDecoder<'a, C> {
     /// ```
     /// # use believer::*;
     /// let channel = channel::BinarySymmetricChannel::new(0.2);
-    /// let parity_check = ParityCheckMatrix::new(vec![
-    ///     vec![0, 1],
-    ///     vec![1, 2],
-    ///     vec![2, 3],
-    ///     vec![3, 4],
-    /// ]);
+    /// let parity_check = ParityCheckMatrix::new(
+    ///     vec![
+    ///         vec![0, 1],
+    ///         vec![1, 2],
+    ///         vec![2, 3],
+    ///         vec![3, 4],
+    ///     ],
+    ///     5
+    /// );
     /// let decoder = BPDecoder::new(&channel, &parity_check, 3);
     ///
     /// assert_eq!(decoder.n_checks(), 4);
@@ -103,12 +112,15 @@ impl<'a, C: BinaryChannel> BPDecoder<'a, C> {
     /// let channel = channel::BinarySymmetricChannel::new(0.2);
     ///
     /// // A 5 bits repetition code.
-    /// let parity_check = ParityCheckMatrix::new(vec![
-    ///     vec![0, 1],
-    ///     vec![1, 2],
-    ///     vec![2, 3],
-    ///     vec![3, 4],
-    /// ]);
+    /// let parity_check = ParityCheckMatrix::new(
+    ///     vec![
+    ///         vec![0, 1],
+    ///         vec![1, 2],
+    ///         vec![2, 3],
+    ///         vec![3, 4],
+    ///     ],
+    ///     5
+    /// );
     /// let max_iters = 10;
     ///
     /// // The decoder
@@ -162,11 +174,14 @@ where
     /// ```
     /// # use believer::*;
     /// let channel = channel::BinarySymmetricChannel::new(0.2);
-    /// let parity_check = ParityCheckMatrix::new(vec![
-    ///     vec![0, 1],
-    ///     vec![1, 2],
-    ///     vec![2, 3],
-    /// ]);
+    /// let parity_check = ParityCheckMatrix::new(
+    ///     vec![
+    ///         vec![0, 1],
+    ///         vec![1, 2],
+    ///         vec![2, 3],
+    ///     ],
+    ///     4
+    /// );
     /// let decoder = BPDecoder::new(&channel, &parity_check, 10);
     ///
     /// // Should be able to decode this message to the 1 codeword.
@@ -311,7 +326,7 @@ mod test {
         // Tests with a 3 bits repetition code over a
         // bsc with error probability of 0.2.s
         let channel = BinarySymmetricChannel::new(0.2);
-        let parity_check = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2]]);
+        let parity_check = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2]], 3);
         let decoder = BPDecoder::new(&channel, &parity_check, 5);
 
         // Should decode 1 error.
@@ -325,7 +340,7 @@ mod test {
     #[test]
     fn get_stuck_in_cycle() {
         let channel = BinarySymmetricChannel::new(0.2);
-        let parity_check = ParityCheckMatrix::new(vec![vec![0, 1]]);
+        let parity_check = ParityCheckMatrix::new(vec![vec![0, 1]], 2);
         let decoder = BPDecoder::new(&channel, &parity_check, 10);
 
         assert_eq!(decoder.decode(&vec![GF2::B0, GF2::B1]), BPResult::GotStuck);

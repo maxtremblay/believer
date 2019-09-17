@@ -61,7 +61,7 @@ mod test {
 
     #[test]
     fn repetition_code() {
-        let matrix = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2]]);
+        let matrix = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2]], 3);
         let decoder = ErasureDecoder::new(&matrix, 0.2);
 
         assert_eq!(decoder.decode(&vec![]), ErasureResult::Succeed);
@@ -77,7 +77,7 @@ mod test {
     #[test]
     fn hamming_code() {
         let matrix =
-            ParityCheckMatrix::new(vec![vec![0, 1, 2, 4], vec![0, 1, 3, 5], vec![0, 2, 3, 6]]);
+            ParityCheckMatrix::new(vec![vec![0, 1, 2, 4], vec![0, 1, 3, 5], vec![0, 2, 3, 6]], 7);
         let decoder = ErasureDecoder::new(&matrix, 0.2);
 
         assert_eq!(decoder.decode(&vec![]), ErasureResult::Succeed);

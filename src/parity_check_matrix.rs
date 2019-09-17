@@ -24,10 +24,13 @@ impl ParityCheckMatrix {
     /// # Example
     /// ```
     /// # use::believer::*;
-    /// let parity_check = ParityCheckMatrix::new(vec![
-    ///     vec![0, 1],
-    ///     vec![1, 2],
-    /// ]);
+    /// let parity_check = ParityCheckMatrix::new(
+    ///     vec![
+    ///         vec![0, 1],
+    ///         vec![1, 2],
+    ///     ],
+    ///     3
+    /// );
     /// let mut iter = parity_check.checks_iter();
     ///
     /// assert_eq!(iter.next(), parity_check.check(0));
@@ -49,10 +52,13 @@ impl ParityCheckMatrix {
     ///
     /// ```
     /// # use believer::*;
-    /// let parity_check = ParityCheckMatrix::new(vec![
-    ///     vec![0, 1],
-    ///     vec![1, 2],
-    /// ]);
+    /// let parity_check = ParityCheckMatrix::new(
+    ///     vec![
+    ///         vec![0, 1],
+    ///         vec![1, 2],
+    ///     ],
+    ///     3
+    /// );
     /// let slice = parity_check.check(0).unwrap();
     /// let vector = vec![GF2::B1, GF2::B1, GF2::B0];
     ///
@@ -72,10 +78,13 @@ impl ParityCheckMatrix {
     ///
     /// ```
     /// # use::believer::*;
-    /// let parity_check = ParityCheckMatrix::new(vec![
-    ///     vec![0, 1],
-    ///     vec![1, 2],
-    /// ]);
+    /// let parity_check = ParityCheckMatrix::new(
+    ///     vec![
+    ///         vec![0, 1],
+    ///         vec![1, 2],
+    ///     ],
+    ///     3
+    /// );
     /// let vector = vec![GF2::B0, GF2::B1, GF2::B1];
     ///
     /// assert_eq!(parity_check.dot(&vector), vec![GF2::B1, GF2::B0]);
@@ -90,10 +99,13 @@ impl ParityCheckMatrix {
     ///
     /// ```
     /// # use believer::*;
-    /// let parity_check = ParityCheckMatrix::new(vec![
-    ///     vec![0, 1],
-    ///     vec![1, 2],
-    /// ]);
+    /// let parity_check = ParityCheckMatrix::new(
+    ///     vec![
+    ///         vec![0, 1],
+    ///         vec![1, 2],
+    ///     ],
+    ///     3
+    /// );
     /// let message = vec![GF2::B0, GF2::B1, GF2::B1];
     /// let codeword = vec![GF2::B0; 3];
     ///
@@ -126,34 +138,32 @@ impl ParityCheckMatrix {
     }
 
     /// Creates a new `ParityCheckMatrix` from a list of `checks` where
-    /// each check is a list of the bits connected to that check.
+    /// each check is a list of the bits connected to that check and the
+    /// number of bits.
     ///
     /// # Example
     ///
     /// ```
     /// # use::believer::ParityCheckMatrix;
     /// // The parity check matrix of a 3 bits repetition code.
-    /// let parity_check = ParityCheckMatrix::new(vec![
-    ///     vec![0, 1],
-    ///     vec![1, 2],
-    /// ]);
+    /// let parity_check = ParityCheckMatrix::new(
+    ///     vec![
+    ///         vec![0, 1],
+    ///         vec![1, 2],
+    ///     ],
+    ///     3
+    /// );
     /// ```
-    pub fn new(mut checks: Vec<Vec<usize>>) -> Self {
+    pub fn new(mut checks: Vec<Vec<usize>>, n_bits: usize) -> Self {
         let mut bit_indices = Vec::new();
         let mut check_ranges = Vec::with_capacity(checks.len() + 1);
         check_ranges.push(0);
 
         let mut n_elements = 0;
-        let mut n_bits = 0;
         for check in checks.iter_mut() {
             n_elements += check.len();
             check_ranges.push(n_elements);
             check.sort();
-            if let Some(c) = check.last() {
-                if (c + 1) > n_bits {
-                    n_bits = c + 1
-                }
-            }
             bit_indices.append(check);
         }
 
@@ -170,10 +180,13 @@ impl ParityCheckMatrix {
     ///
     /// ```
     /// # use believer::*;
-    /// let parity_check = ParityCheckMatrix::new(vec![
-    ///     vec![0, 1],
-    ///     vec![1, 2],
-    /// ]);
+    /// let parity_check = ParityCheckMatrix::new(
+    ///     vec![
+    ///         vec![0, 1],
+    ///         vec![1, 2],
+    ///     ],
+    ///     3
+    /// );
     /// let mut iter = parity_check.positions_iter();
     ///
     /// assert_eq!(iter.next(), Some((0, 0)));
@@ -197,11 +210,14 @@ impl ParityCheckMatrix {
     ///
     /// ```
     /// # use believer::*;
-    /// let parity_check = ParityCheckMatrix::new(vec![
-    ///     vec![0, 1],
-    ///     vec![1, 2],
-    ///     vec![0, 2],
-    /// ]);
+    /// let parity_check = ParityCheckMatrix::new(
+    ///     vec![
+    ///         vec![0, 1],
+    ///         vec![1, 2],
+    ///         vec![0, 2],
+    ///     ],
+    ///     3
+    /// );
     /// assert_eq!(parity_check.rank(), 2);
     /// ```
     pub fn rank(&self) -> usize {
@@ -234,7 +250,7 @@ impl ParityCheckMatrix {
                     .collect()
             })
             .collect();
-        ParityCheckMatrix::new(checks)
+        Self::new(checks, self.len())
     }
 }
 
@@ -272,11 +288,14 @@ impl<'a> Check<'a> {
     ///
     /// ```
     /// # use believer::*;
-    /// let parity_check = ParityCheckMatrix::new(vec![
-    ///     vec![0, 1, 2, 4],
-    ///     vec![0, 1, 3, 5],
-    ///     vec![0, 2, 3, 6],
-    /// ]);
+    /// let parity_check = ParityCheckMatrix::new(
+    ///     vec![
+    ///         vec![0, 1, 2, 4],
+    ///         vec![0, 1, 3, 5],
+    ///         vec![0, 2, 3, 6],
+    ///     ],
+    ///     7
+    /// );
     /// let other = vec![GF2::B0, GF2::B1, GF2::B0, GF2::B1, GF2::B0, GF2::B1, GF2::B0];
     ///
     /// assert_eq!(parity_check.check(0).unwrap().dot(&other), GF2::B1);
@@ -299,10 +318,13 @@ impl<'a> Check<'a> {
     ///
     /// ```
     /// # use believer::*;
-    /// let parity_check = ParityCheckMatrix::new(vec![
-    ///     vec![0, 1],
-    ///     vec![1, 2],
-    /// ]);
+    /// let parity_check = ParityCheckMatrix::new(
+    ///     vec![
+    ///         vec![0, 1],
+    ///         vec![1, 2],
+    ///     ],
+    ///     3
+    /// );
     ///
     /// assert_eq!(parity_check.check(0).unwrap().positions(), &[0, 1]);
     /// assert_eq!(parity_check.check(1).unwrap().positions(), &[1, 2]);
@@ -438,7 +460,7 @@ mod test {
 
     #[test]
     fn checks_iterator() {
-        let parity_check = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2]]);
+        let parity_check = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2]], 3);
         let mut iter = parity_check.checks_iter();
 
         assert_eq!(iter.next(), parity_check.check(0));
@@ -451,7 +473,7 @@ mod test {
 
     #[test]
     fn dot_product() {
-        let parity_check = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2]]);
+        let parity_check = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2]], 3);
         let bits = vec![GF2::B0, GF2::B1, GF2::B1];
 
         assert_eq!(parity_check.check(0).unwrap().dot(&bits), GF2::B1);
@@ -461,7 +483,7 @@ mod test {
 
     #[test]
     fn positions_iterator() {
-        let parity_check = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2]]);
+        let parity_check = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2]], 3);
         let mut iter = parity_check.positions_iter();
 
         assert_eq!(iter.next(), Some((0, 0)));
@@ -474,16 +496,16 @@ mod test {
     #[test]
     fn rank() {
         let parity_check_0 =
-            ParityCheckMatrix::new(vec![vec![0, 1, 2, 4], vec![0, 1, 3, 5], vec![0, 2, 3, 6]]);
+            ParityCheckMatrix::new(vec![vec![0, 1, 2, 4], vec![0, 1, 3, 5], vec![0, 2, 3, 6]], 7);
         assert_eq!(parity_check_0.rank(), 3);
 
-        let parity_check_1 = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2], vec![0, 2]]);
+        let parity_check_1 = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2], vec![0, 2]], 3);
         assert_eq!(parity_check_1.rank(), 2);
     }
 
     #[test]
     fn size() {
-        let parity_check = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2]]);
+        let parity_check = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2]], 3);
 
         assert_eq!(parity_check.len(), 4);
         assert_eq!(parity_check.n_bits(), 3);
