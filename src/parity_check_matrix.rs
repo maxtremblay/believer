@@ -254,6 +254,16 @@ impl ParityCheckMatrix {
     }
 }
 
+impl std::fmt::Display for ParityCheckMatrix {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for check in self.checks_iter() {
+            write!(f, "{:?}\n", check.positions())?;
+        }
+        Ok(())
+    }
+}
+
+
 // ************************
 // Public utilitary structs
 // ************************
