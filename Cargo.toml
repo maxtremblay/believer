@@ -1,6 +1,6 @@
 [package]
 name = "believer"
-version = "0.1.2"
+version = "0.1.3"
 authors = ["Maxime Tremblay"]
 edition = "2018"
 description = "A toolbox to simulate error correcting code performance."
