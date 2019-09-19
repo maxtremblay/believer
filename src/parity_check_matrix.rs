@@ -117,6 +117,35 @@ impl ParityCheckMatrix {
             .all(|check| check.dot(message) == GF2::B0)
     }
 
+    /// Returns the extra spread per check of `self`. If all checks are locals (acts on
+    /// consecutive bits), then the extra spread is 0. The extra spread of a check is 
+    /// the diffrence between its spread and length.
+    ///  
+    /// 
+    /// # Example
+    ///
+    /// ```
+    /// # use believer::*;
+    /// let parity_check = ParityCheckMatrix::new(
+    ///     vec![
+    ///         vec![0, 1],
+    ///         vec![1, 2, 5],
+    ///         vec![3],
+    ///         vec![0, 4],
+    ///         vec![],
+    ///     ],
+    ///     6
+    /// );
+    ///
+    /// assert_eq!(parity_check.extra_spread_per_check(), vec![0, 2, 0, 3, 0]);
+    /// ```
+    pub fn extra_spread_per_check(&self) -> Vec<usize> {
+        self
+            .checks_iter()
+            .map(|check| check.spread() - check.len())
+            .collect()
+    }
+
     /// Returns `true` is there is no value in `self`.
     pub fn is_empty(&self) -> bool {
         self.len() == 0
@@ -174,7 +203,8 @@ impl ParityCheckMatrix {
         }
     }
 
-    /// positions are ordered by check first.
+    /// Returns an iterators over all positions in `self` where the value
+    /// is 1. Positions are ordered by check first.
     ///
     /// # Example
     ///
@@ -322,6 +352,11 @@ impl<'a> Check<'a> {
         total
     }
 
+    /// Returns the number of positions in `self`.
+    pub fn len(&self) -> usize {
+        self.positions.len()
+    }
+
     /// Returns the positions of the bits in `self`.
     ///
     /// # Example
@@ -341,6 +376,40 @@ impl<'a> Check<'a> {
     /// ```
     pub fn positions(&self) -> &[usize] {
         self.positions
+    }
+
+    /// Returns the spread of `self`, that is `max(self) - min(self) + 1'. 
+    /// 
+    /// # Example
+    ///
+    /// ```
+    /// # use believer::*;
+    /// let parity_check = ParityCheckMatrix::new(
+    ///     vec![
+    ///         vec![0, 1],
+    ///         vec![1, 2, 5],
+    ///         vec![3],
+    ///         vec![0, 4],
+    ///         vec![],
+    ///     ],
+    ///     6
+    /// );
+    ///
+    /// assert_eq!(parity_check.check(0).unwrap().spread(), 2);
+    /// assert_eq!(parity_check.check(1).unwrap().spread(), 5);
+    /// assert_eq!(parity_check.check(2).unwrap().spread(), 1);
+    /// assert_eq!(parity_check.check(3).unwrap().spread(), 5);
+    /// assert_eq!(parity_check.check(4).unwrap().spread(), 0);
+    /// ```
+    pub fn spread(&self) -> usize {
+        self.positions
+            .last()
+            .and_then(|last| 
+                self.positions
+                    .first()
+                    .map(|first| last - first + 1)
+            )
+            .unwrap_or(0)
     }
 }
 
