@@ -76,8 +76,10 @@ mod test {
 
     #[test]
     fn hamming_code() {
-        let matrix =
-            ParityCheckMatrix::new(vec![vec![0, 1, 2, 4], vec![0, 1, 3, 5], vec![0, 2, 3, 6]], 7);
+        let matrix = ParityCheckMatrix::new(
+            vec![vec![0, 1, 2, 4], vec![0, 1, 3, 5], vec![0, 2, 3, 6]],
+            7,
+        );
         let decoder = ErasureDecoder::new(&matrix, 0.2);
 
         assert_eq!(decoder.decode(&vec![]), ErasureResult::Succeed);

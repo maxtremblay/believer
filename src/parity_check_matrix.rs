@@ -1,6 +1,7 @@
 //! A sparse implementation of a parity check matrix.
 
 use crate::GF2;
+use std::cmp::{max, min};
 
 // *******************
 // Parity Check Matrix
@@ -118,10 +119,10 @@ impl ParityCheckMatrix {
     }
 
     /// Returns the extra spread per check of `self`. If all checks are locals (acts on
-    /// consecutive bits), then the extra spread is 0. The extra spread of a check is 
+    /// consecutive bits), then the extra spread is 0. The extra spread of a check is
     /// the diffrence between its spread and length.
     ///  
-    /// 
+    ///
     /// # Example
     ///
     /// ```
@@ -140,8 +141,7 @@ impl ParityCheckMatrix {
     /// assert_eq!(parity_check.extra_spread_per_check(), vec![0, 2, 0, 3, 0]);
     /// ```
     pub fn extra_spread_per_check(&self) -> Vec<usize> {
-        self
-            .checks_iter()
+        self.checks_iter()
             .map(|check| check.spread() - check.len())
             .collect()
     }
@@ -203,6 +203,11 @@ impl ParityCheckMatrix {
         }
     }
 
+    /// TO DOCUMENT
+    pub fn periodic_crossings(&self) -> Vec<usize> {
+        self.adjacency().periodic_crossings()
+    }
+
     /// Returns an iterators over all positions in `self` where the value
     /// is 1. Positions are ordered by check first.
     ///
@@ -254,9 +259,36 @@ impl ParityCheckMatrix {
         Ranker::new(self).rank()
     }
 
+    /// TO DOCUMENT !!
+    pub fn small_periodic_path_weights(&self) -> Vec<usize> {
+        let paths = SmallestPeriodicPaths::new(self);
+        paths.step_weights()
+    }
+
     // *
     // Private methods
     // *
+
+    fn adjacency(&self) -> Adjacency {
+        let mut rows = vec![Vec::new(); self.n_bits];
+        self.checks_iter().for_each(|check| {
+            for active in 0..check.len() {
+                if let Some(&active_bit) = check.positions().get(active) {
+                    check
+                        .positions()
+                        .iter()
+                        .skip(active + 1)
+                        .for_each(|&other_bit| {
+                            rows[active_bit].push(other_bit);
+                        })
+                }
+            }
+        });
+        Adjacency {
+            rows,
+            n_bits: self.n_bits,
+        }
+    }
 
     // Returns a reference to `self.check_ranges`.
     pub(crate) fn check_ranges(&self) -> &[usize] {
@@ -292,7 +324,6 @@ impl std::fmt::Display for ParityCheckMatrix {
         Ok(())
     }
 }
-
 
 // ************************
 // Public utilitary structs
@@ -378,8 +409,8 @@ impl<'a> Check<'a> {
         self.positions
     }
 
-    /// Returns the spread of `self`, that is `max(self) - min(self) + 1'. 
-    /// 
+    /// Returns the spread of `self`, that is `max(self) - min(self) + 1'.
+    ///
     /// # Example
     ///
     /// ```
@@ -404,11 +435,7 @@ impl<'a> Check<'a> {
     pub fn spread(&self) -> usize {
         self.positions
             .last()
-            .and_then(|last| 
-                self.positions
-                    .first()
-                    .map(|first| last - first + 1)
-            )
+            .and_then(|last| self.positions.first().map(|first| last - first + 1))
             .unwrap_or(0)
     }
 }
@@ -445,6 +472,97 @@ impl<'a> Iterator for PositionsIter<'a> {
 // *************************
 // Private utilitary structs
 // *************************
+
+// Helper struct to computer the crossing in the adjacency matrix.
+struct Adjacency {
+    rows: Vec<Vec<usize>>,
+    n_bits: usize,
+}
+
+impl Adjacency {
+    fn periodic_crossings(&self) -> Vec<usize> {
+        let mut crossings = vec![0; self.n_bits];
+        self.rows.iter().enumerate().for_each(|(bit_0, row)| {
+            row.iter().for_each(|&bit_1| {
+                self.periodic_range(bit_0, bit_1).iter().for_each(|&index| {
+                    crossings[index] += 1;
+                });
+            });
+        });
+        crossings
+    }
+
+    fn periodic_range(&self, bit_0: usize, bit_1: usize) -> Vec<usize> {
+        let distance = max(bit_0, bit_1) - min(bit_0, bit_1);
+        if distance <= self.n_bits - distance {
+            (bit_0..bit_1).collect()
+        } else {
+            (bit_1..(self.n_bits + bit_0))
+                .map(|x| x % self.n_bits)
+                .collect()
+        }
+    }
+}
+
+struct SmallestPeriodicPaths {
+    checks: Vec<Vec<usize>>,
+    n_bits: usize,
+}
+
+impl SmallestPeriodicPaths {
+    fn distance_at_step(&self, check: &[usize], step: usize) -> usize {
+        let (bit_0, bit_1) = (check[step % check.len()], check[(step + 1) % check.len()]);
+        (self.n_bits + bit_1 - bit_0) % self.n_bits
+    }
+    
+    fn find_starting_point(&self, check: &[usize]) -> usize {
+        let mut starting_point = 0;
+        let mut maximal_distance = 0;
+        for step in 0..check.len() {
+            let distance = self.distance_at_step(check, step);
+            if distance > maximal_distance {
+                starting_point = (step + 1) % check.len();
+                maximal_distance = distance;
+            }
+        }
+        starting_point
+    }
+
+    fn new(matrix: &ParityCheckMatrix) -> Self {
+        let mut checks = Vec::with_capacity(matrix.n_checks());
+        for check in matrix.checks_iter() {
+            checks.push(check.positions().to_vec());
+        }
+        Self {
+            checks,
+            n_bits: matrix.n_bits(),
+        }
+    }
+
+    fn range_from(&self, start: usize, check: &[usize]) -> std::ops::Range<usize> {
+        let first_bit = check[start];
+        let mut last_bit = if start == 0 {
+            check[check.len() - 1]
+        } else {
+            check[start - 1]
+        };
+        if last_bit < first_bit {
+            last_bit += self.n_bits;
+        }
+        first_bit..last_bit
+    }
+
+    fn step_weights(&self) -> Vec<usize> {
+        let mut weights = vec![0; self.n_bits];
+        for check in self.checks.iter() {
+            let start = self.find_starting_point(check);
+            for bit in self.range_from(start, check) {
+                weights[bit % self.n_bits] += 1;
+            }
+        }
+        weights
+    }
+}
 
 // Helper struct to compute the rank of a parity check matrix.
 struct Ranker {
@@ -573,9 +691,26 @@ mod test {
     }
 
     #[test]
+    fn periodic_crossings() {
+        let checks = ParityCheckMatrix::new(
+            vec![vec![0, 1, 4], vec![2, 3], vec![4, 6], vec![1, 5, 6]],
+            7,
+        );
+        assert_eq!(checks.periodic_crossings(), vec![3, 1, 2, 1, 2, 4, 3]);
+
+        let other_checks = ParityCheckMatrix::new(
+            vec![vec![0, 1, 2], vec![2, 3], vec![3, 4, 5], vec![5, 6, 0]],
+            7,
+        );
+        assert_eq!(other_checks.periodic_crossings(), vec![2, 2, 1, 2, 2, 2, 2]);
+    }
+
+    #[test]
     fn rank() {
-        let parity_check_0 =
-            ParityCheckMatrix::new(vec![vec![0, 1, 2, 4], vec![0, 1, 3, 5], vec![0, 2, 3, 6]], 7);
+        let parity_check_0 = ParityCheckMatrix::new(
+            vec![vec![0, 1, 2, 4], vec![0, 1, 3, 5], vec![0, 2, 3, 6]],
+            7,
+        );
         assert_eq!(parity_check_0.rank(), 3);
 
         let parity_check_1 = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2], vec![0, 2]], 3);
@@ -589,5 +724,28 @@ mod test {
         assert_eq!(parity_check.len(), 4);
         assert_eq!(parity_check.n_bits(), 3);
         assert_eq!(parity_check.n_checks(), 2);
+    }
+
+    #[test]
+    fn smallest_periodic_path_weights() {
+        let checks = ParityCheckMatrix::new(
+            vec![vec![0, 1, 4], vec![2, 3], vec![4, 6], vec![1, 5, 6]],
+            7,
+        );
+
+        assert_eq!(checks.small_periodic_path_weights(), vec![2, 0, 1, 0, 2, 3, 2]);
+
+        let other_checks = ParityCheckMatrix::new(
+            vec![vec![0, 1, 2], vec![2, 3], vec![3, 4, 5], vec![5, 6, 0]],
+            7,
+        );
+        assert_eq!(other_checks.small_periodic_path_weights(), vec![1, 1, 1, 1, 1, 1, 1]);      
+
+        let last_checks = ParityCheckMatrix::new(
+            vec![vec![0, 4], vec![2, 3, 4], vec![2, 6, 7], vec![0, 1, 5], vec![3, 4, 5, 6, 7]],
+            8
+        );
+
+        assert_eq!(last_checks.small_periodic_path_weights(), vec![2, 1, 1, 2, 2, 3, 4, 3]);
     }
 }
