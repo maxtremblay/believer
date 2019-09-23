@@ -259,8 +259,27 @@ impl ParityCheckMatrix {
         Ranker::new(self).rank()
     }
 
-    /// TO DOCUMENT !!
-    pub fn small_periodic_path_weights(&self) -> Vec<usize> {
+    /// Computes the smallest path for each check needed to link each bit of that check together
+    /// and returns the number of time each step is included in a path.
+    /// 
+    /// # Example
+    /// 
+    /// ```
+    /// # use believer::*;
+    /// // A 4 bits parity check matrix with only 1 check.
+    /// let matrix = ParityCheckMatrix::new(vec![vec![0, 1, 3]], 4);
+    /// 
+    /// // The smallest path is 3 -> 0 -> 1, therefore the steps 0 -> 1 and 3 -> 1 have weight 1 and
+    /// // the steps 1 -> 2 and 2 -> 3 have weight 0.
+    /// assert_eq!(matrix.smallest_periodic_path_weights(), vec![1, 0, 0, 1]);
+    /// 
+    /// // A 4 bits parity check matrix with 2 checks;
+    /// let matrix = ParityCheckMatrix::new(vec![vec![0, 1, 3], vec![0, 1, 2]], 4);
+    /// 
+    /// // The smallest path of the new check is 0 -> 1 -> 2.
+    /// assert_eq!(matrix.smallest_periodic_path_weights(), vec![2, 1, 0, 1]);
+    /// ```
+    pub fn smallest_periodic_path_weights(&self) -> Vec<usize> {
         let paths = SmallestPeriodicPaths::new(self);
         paths.step_weights()
     }
@@ -733,19 +752,19 @@ mod test {
             7,
         );
 
-        assert_eq!(checks.small_periodic_path_weights(), vec![2, 0, 1, 0, 2, 3, 2]);
+        assert_eq!(checks.smallest_periodic_path_weights(), vec![2, 0, 1, 0, 2, 3, 2]);
 
         let other_checks = ParityCheckMatrix::new(
             vec![vec![0, 1, 2], vec![2, 3], vec![3, 4, 5], vec![5, 6, 0]],
             7,
         );
-        assert_eq!(other_checks.small_periodic_path_weights(), vec![1, 1, 1, 1, 1, 1, 1]);      
+        assert_eq!(other_checks.smallest_periodic_path_weights(), vec![1, 1, 1, 1, 1, 1, 1]);      
 
         let last_checks = ParityCheckMatrix::new(
             vec![vec![0, 4], vec![2, 3, 4], vec![2, 6, 7], vec![0, 1, 5], vec![3, 4, 5, 6, 7]],
             8
         );
 
-        assert_eq!(last_checks.small_periodic_path_weights(), vec![2, 1, 1, 2, 2, 3, 4, 3]);
+        assert_eq!(last_checks.smallest_periodic_path_weights(), vec![2, 1, 1, 2, 2, 3, 4, 3]);
     }
 }
