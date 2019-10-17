@@ -20,6 +20,52 @@ impl ParityCheckMatrix {
     // Public methods
     // *
 
+    /// Returns the degree of each bit in `self`.
+    /// 
+    /// # Example 
+    /// ```
+    /// # use believer::*;
+    /// let checks = ParityCheckMatrix::new(
+    ///     vec![
+    ///         vec![0, 1, 2, 5],
+    ///         vec![1, 3, 4],
+    ///         vec![2, 4, 5],
+    ///         vec![0, 5],
+    ///     ],
+    ///     7,
+    /// );
+    /// assert_eq!(checks.bit_degrees(), vec![2, 2, 2, 1, 2, 3, 0]);
+    /// ```
+    pub fn bit_degrees(&self) -> Vec<usize> {
+        let mut degrees = vec![0; self.n_bits];
+        self.checks_iter().for_each(|check| {
+            check.positions().iter().for_each(|bit| {
+                degrees[*bit] += 1;
+            })
+        });
+        degrees
+    }
+
+    /// Returns the degree of each check in `self`.
+    /// 
+    /// # Example 
+    /// ```
+    /// # use believer::*;
+    /// let checks = ParityCheckMatrix::new(
+    ///     vec![
+    ///         vec![0, 1, 2, 5],
+    ///         vec![1, 3, 4],
+    ///         vec![2, 4, 5],
+    ///         vec![0, 5],
+    ///     ],
+    ///     7,
+    /// );
+    /// assert_eq!(checks.check_degrees(), vec![4, 3, 3, 2]);
+    /// ```
+    pub fn check_degrees(&self) -> Vec<usize> {
+        self.checks_iter().map(|check| check.len()).collect()
+    }
+
     /// Returns an iterator that yields a slice for each check of `self`.
     ///
     /// # Example
