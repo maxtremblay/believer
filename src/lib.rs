@@ -9,6 +9,9 @@ pub use decoders::{BPDecoder, BPResult, Decoder, DecodingResult, ErasureDecoder,
 pub mod gf2;
 pub use gf2::GF2;
 
+pub mod generators;
+pub use generators::CodeGenerator;
+
 pub mod parity_check_matrix;
 pub use parity_check_matrix::ParityCheckMatrix;
 

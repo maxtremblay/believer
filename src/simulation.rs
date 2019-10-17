@@ -74,6 +74,14 @@ pub struct SimulationResult {
 }
 
 impl SimulationResult {
+    pub fn worse_result() -> Self {
+        Self { successes: 0, failures: 1 }
+    }
+
+    pub fn best_result() -> Self {
+        Self { successes: 1, failures: 0 }
+    }
+
     pub fn failure_rate(&self) -> f64 {
         self.failures() as f64 / self.total() as f64
     }
