@@ -94,3 +94,15 @@ impl SimulationResult {
         self.failures() + self.successes()
     }
 }
+
+impl std::cmp::PartialEq for SimulationResult {
+    fn eq(&self, other: &Self) -> bool {
+        self.success_rate() == other.success_rate()
+    }
+}
+
+impl std::cmp::PartialOrd for SimulationResult {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.success_rate().partial_cmp(&other.success_rate())
+    }
+}
