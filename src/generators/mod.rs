@@ -31,3 +31,6 @@ pub trait CodeGenerator {
         best_code.map(|code| (code, best_performance))
     }
 }
+
+pub mod regular_ldpc;
+pub use regular_ldpc::*;
