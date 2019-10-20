@@ -153,8 +153,8 @@ impl<'a, C: BinaryChannel> BPDecoder<'a, C> {
         }
     }
 }
-
-impl<'a, C> Decoder for BPDecoder<'a, C>
+/*
+impl<C> Decoder for BPDecoder<C>
 where
     C: BinaryChannel,
 {
@@ -228,7 +228,7 @@ where
         self.channel.sample_uniform(GF2::B0, self.n_bits())
     }
 }
-
+*/
 // ****************************
 // Public utilitary constructs
 // ****************************

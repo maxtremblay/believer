@@ -1,16 +1,17 @@
 //! A classical erasure decoder.
 
-use super::{Decoder, DecodingResult};
+use super::{Checks, Decoder, DecodingResult, DecoderBuilder};
 use crate::ParityCheckMatrix;
 use rand::{thread_rng, Rng};
 
-pub struct ErasureDecoder<'a> {
-    checks: &'a ParityCheckMatrix,
+pub struct ErasureDecoder{
+    checks: ParityCheckMatrix,
     erasure_prob: f64,
+
 }
 
-impl<'a> ErasureDecoder<'a> {
-    pub fn new(checks: &'a ParityCheckMatrix, erasure_prob: f64) -> Self {
+impl ErasureDecoder{
+    pub fn new(checks: ParityCheckMatrix, erasure_prob: f64) -> Self {
         if erasure_prob < 0.0 || erasure_prob > 1.0 {
             panic!("invalid probability");
         }
@@ -21,9 +22,21 @@ impl<'a> ErasureDecoder<'a> {
     }
 }
 
-impl<'a> Decoder for ErasureDecoder<'a> {
+
+
+impl<'a> Decoder for ErasureDecoder {
     type Error = Vec<usize>;
     type Result = ErasureResult;
+
+    // fn new(checks: &'a ParityCheckMatrix, erasure_prob: f64) -> Self {
+    //     if erasure_prob < 0.0 || erasure_prob > 1.0 {
+    //         panic!("invalid probability");
+    //     }
+    //     Self {
+    //         checks,
+    //         erasure_prob,
+    //     }
+    // }
 
     fn decode(&self, error: &Self::Error) -> Self::Result {
         let erased_parity_check = self.checks.keep(error);
@@ -39,6 +52,25 @@ impl<'a> Decoder for ErasureDecoder<'a> {
         (0..self.checks.n_bits())
             .filter(|_| rng.gen::<f64>() < self.erasure_prob)
             .collect()
+    }
+}
+
+pub struct EDBuilder {
+    erasure_prob: f64,
+}
+
+impl EDBuilder {
+    pub fn new(erasure_prob: f64) -> Self {
+        Self {
+            erasure_prob
+            }
+    }
+}
+
+impl DecoderBuilder<ParityCheckMatrix, ErasureDecoder> for EDBuilder where {
+
+    fn from_code(&self,code: ParityCheckMatrix) -> ErasureDecoder{
+       ErasureDecoder::new(code, self.erasure_prob)
     }
 }
 
