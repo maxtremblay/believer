@@ -15,7 +15,7 @@ impl RandomCheckGenerator {
         unimplemented!()
     }
 
-    pub fn reset(&mut self) -> Self {
+    pub fn over_all_bits(&mut self) -> Self {
         unimplemented!()
     }
 
@@ -25,6 +25,10 @@ impl RandomCheckGenerator {
 
     pub fn with_distribution(&mut self, probs: &[f64]) -> Self {
         unimplemented!()
+    }
+
+    pub fn with_uniform_distribution(&mut self) -> Self {
+
     }
 
     pub fn without(&mut self, bits: &[usize]) -> Self {
@@ -53,13 +57,13 @@ mod test {
         let first_check = generator.without(&[2]).generate(2);
         assert_eq!(first_check, Some(vec![0, 1]));
 
-        let second_check = generator.reset().without(&[0]).generate(2);
+        let second_check = generator.over_all_bits().without(&[0]).generate(2);
         assert_eq!(second_check, Some(vec![1, 2]));
 
         // We already have checks [0,1] and [1, 2]. Degree of bit 1 is 2 and it can't be include in
         // another check.
         
-        let third_check = generator.reset().generate(3);
+        let third_check = generator.over_all_bits().generate(3);
         assert_eq!(third_check, None);
 
         let fourth_check = generator.generate(2);
@@ -91,17 +95,46 @@ mod test {
         let first_check = generator.over_bits(&[0, 1, 2]).generate(3);
         assert_eq!(first_check, Some(vec![0, 1, 2]));
 
-        let second_check = generator.reset().over_bits(&[2, 3]).generate(2);
+        let second_check = generator.over_bits(&[2, 3]).generate(2);
         assert_eq!(second_check, Some(vec![2, 3]));
 
         // A check over [0, 3] will create a 6-cycle.
-        let third_check = generator.reset().over_bits(&[0, 3]).generate(2);
+        let third_check = generator.over_bits(&[0, 3]).generate(2);
         assert_eq!(third_check, None);
 
         // Possible checks are [0, 4] or [3, 4]
-        let fourth_check = generator.reset().over_bits(&[0, 3, 4]).generate(2);
+        let fourth_check = generator.over_bits(&[0, 3, 4]).generate(2);
         assert_eq!(fourth_check.clone().unwrap().contains(&4), true);
         assert_eq!(fourth_check.unwrap().len(), 2);
+    }
 
+    #[test]
+    fn generate_bit_according_to_distribution() {
+        let generator = RandomCheckGenerator::new(&[2; 5], 0)
+            .with_distribution(&[0.25, 0.25, 0.0, 0.25, 0.25]);
+        
+        // Generate all degree 2 checks from the given distribution
+        for _ in 0..6 {
+            assert_eq!(generator.generate(2).is_some(), true);
+        }
+        assert_eq!(generator.generate(2), None);
+
+        let mut generator = RandomCheckGenerator::new(&[2; 5], 0)
+            .with_distribution(&[0.25, 0.25, 0.0, 0.25, 0.25])
+            .over_bits(&[0, 1, 2]);
+
+        // Can't generate 3 bits from this distribution over the first 3.
+        assert_eq!(generator.generate(3), None);
+        assert_eq!(generator.generate(2), Some(vec![0, 1]));
+        assert_eq!(generator.generate(2), Some(vec![0, 1]));
+        
+        // Degree of the first 2 bits is 2.
+        assert_eq!(generator.generate(2), None);
+
+        generator.over_all_bits();
+        assert_eq!(generator.generate(2), Some(vec![3, 4]));
+
+        generator.with_uniform_distribution();
+        assert_eq!(generator.generate(3), Some(vec![2, 3, 4]));
     }
 }
