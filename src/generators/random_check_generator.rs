@@ -134,6 +134,10 @@ mod test {
         generator.over_all_bits();
         assert_eq!(generator.generate(2), Some(vec![3, 4]));
 
+        // Can't pick a degree 3 check because probability of bit 2 is 0.
+        assert_eq!(generator.generate(3), None);
+
+        // Reset distribution. 
         generator.with_uniform_distribution();
         assert_eq!(generator.generate(3), Some(vec![2, 3, 4]));
     }
