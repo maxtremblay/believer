@@ -1,7 +1,6 @@
 //! Toolbox to simulate error correction codes performance.
 
-use crate::{Decoder, DecodingResult,CSSErasureDecoder, ErasureDecoder};
-use crate::ParityCheckMatrix;
+use crate::{Decoder, DecodingResult};
 
 pub trait Simulator<D>
 where D: Decoder
