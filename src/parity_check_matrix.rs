@@ -4,6 +4,7 @@ use crate::GF2;
 use std::cmp::{max, min};
 use itertools::Itertools;
 use std::cmp::Ordering;
+use std::ops::{Add,Mul};
 // *******************
 // Parity Check Matrix
 // *******************
@@ -326,35 +327,6 @@ impl ParityCheckMatrix {
         }
     }
 
-    pub fn mult(&self, b: &ParityCheckMatrix) -> ParityCheckMatrix{ // should check for dimensions, needs some optimization
-
-        //let mut new_row = vec![GF2::B0; B.n_bits]; // initializes vector that will temporarily store a computed row of the end matrix
-        let nb_cols = b.n_bits;
-        let nb_rows = self.check_ranges.len()-1;
-        let mut accum_new_rows: Vec<Vec<usize>> = Vec::with_capacity(nb_rows);
-
-        for v1 in self.checks_iter() {
-
-            let mut sparse_row = Vec::with_capacity(nb_cols);// in the worst case we have entries for every column
-
-            for (i, v2) in b.transpose().checks_iter().enumerate() {
-
-                let dot_res = ParityCheckMatrix::sparse_dot(v1.positions(), v2.positions()); 
-
-                if let GF2::B1 = dot_res { //only if the dot product returns a non null value do we mention the column in the sparse row
-                    sparse_row.push(i);
-                }
-                
-            }
-
-            accum_new_rows.push(sparse_row);
-
-        }
-
-        ParityCheckMatrix::new(accum_new_rows, nb_cols)
-
-    }
-
     pub fn sparse_dot(v1: &[usize], v2: &[usize]) -> GF2 {
         let mut i = 0;
         let mut j = 0;
@@ -471,63 +443,7 @@ impl ParityCheckMatrix {
 
     }
 
-    pub fn add(&self, b: &ParityCheckMatrix) -> ParityCheckMatrix { // should check same dimensions
-
-        let nb_bits = self.n_bits;
-        let nb_rows = self.check_ranges.len()-1;
-        let mut new_rows: Vec<Vec<usize>> = Vec::with_capacity(nb_rows);
-
-        for nb_row in 0..nb_rows {
-            // println!("Nb of row:{}",nb_row);
-            // println!("Positions:{:?}",self.check(nb_row).unwrap().positions);
-            let a_row = self.check(nb_row).unwrap().positions;
-            let b_row = b.check(nb_row).unwrap().positions;
-
-            // println!("Rows considered:{:?},{:?}",a_row, b_row);
-
-
-            let mut accum: Vec<usize> = Vec::with_capacity(a_row.len() + b_row.len()); // in the worst case the 1s are in different places and don't cancel out
-
-            let mut i = 0;
-            let mut j = 0;
-
-            while (i < a_row.len()) && (j < b_row.len()){
-
-                if a_row[i] == b_row[j] { // 1+1, we do nothing
-                    i += 1;
-                    j += 1;
-
-                } else if a_row[i] > b_row[j] { 
-                    accum.push(b_row[j]);
-                    j += 1;
-                } else {
-                    accum.push(a_row[i]);
-                    i += 1;
-                }
-
-            }
-
-            // because a and b can have different length we take care of adding potential leftovers
-            if j >= b_row.len() {
-                for k in i .. a_row.len() {
-                    accum.push(a_row[k]);
-                }
-            } else if i >= a_row.len() {
-                for k in j .. b_row.len() {
-                    accum.push(b_row[k]);
-                }
-            }
-            
-            // println!("End row: {:?}",accum);
-
-            new_rows.push(accum);
-
-
-        }
-
-        ParityCheckMatrix::new(new_rows, nb_bits)
-
-    }
+    
 
     pub fn ident(l: usize) -> ParityCheckMatrix  { //returns the identity matrix of dimension l
         let n_bits = l;
@@ -674,6 +590,99 @@ impl<'a> Iterator for ChecksIter<'a> {
         self.active_check += 1;
         slice
     }
+}
+
+impl Add for &ParityCheckMatrix {
+
+    type Output = ParityCheckMatrix;
+
+    fn add(self, b: &ParityCheckMatrix) -> ParityCheckMatrix { // should check same dimensions
+
+        let nb_bits = self.n_bits;
+        let nb_rows = self.check_ranges.len()-1;
+        let mut new_rows: Vec<Vec<usize>> = Vec::with_capacity(nb_rows);
+
+        for nb_row in 0..nb_rows {
+            let a_row = self.check(nb_row).unwrap().positions;
+            let b_row = b.check(nb_row).unwrap().positions;
+
+
+            let mut accum: Vec<usize> = Vec::with_capacity(a_row.len() + b_row.len()); // in the worst case the 1s are in different places and don't cancel out
+
+            let mut i = 0;
+            let mut j = 0;
+
+            while (i < a_row.len()) && (j < b_row.len()){
+
+                if a_row[i] == b_row[j] { // 1+1, we do nothing
+                    i += 1;
+                    j += 1;
+
+                } else if a_row[i] > b_row[j] { 
+                    accum.push(b_row[j]);
+                    j += 1;
+                } else {
+                    accum.push(a_row[i]);
+                    i += 1;
+                }
+
+            }
+
+            // because a and b can have different length we take care of adding potential leftovers
+            if j >= b_row.len() {
+                for k in i .. a_row.len() {
+                    accum.push(a_row[k]);
+                }
+            } else if i >= a_row.len() {
+                for k in j .. b_row.len() {
+                    accum.push(b_row[k]);
+                }
+            }
+            
+            new_rows.push(accum);
+
+
+        }
+
+        ParityCheckMatrix::new(new_rows, nb_bits)
+
+    }
+
+}
+
+impl Mul for &ParityCheckMatrix {
+
+    type Output = ParityCheckMatrix;
+
+    fn mul(self, b: &ParityCheckMatrix) -> ParityCheckMatrix{ // should check for dimensions, needs some optimization
+
+        //let mut new_row = vec![GF2::B0; B.n_bits]; // initializes vector that will temporarily store a computed row of the end matrix
+        let nb_cols = b.n_bits;
+        let nb_rows = self.check_ranges.len()-1;
+        let mut accum_new_rows: Vec<Vec<usize>> = Vec::with_capacity(nb_rows);
+
+        for v1 in self.checks_iter() {
+
+            let mut sparse_row = Vec::with_capacity(nb_cols);// in the worst case we have entries for every column
+
+            for (i, v2) in b.transpose().checks_iter().enumerate() {
+
+                let dot_res = ParityCheckMatrix::sparse_dot(v1.positions(), v2.positions()); 
+
+                if let GF2::B1 = dot_res { //only if the dot product returns a non null value do we mention the column in the sparse row
+                    sparse_row.push(i);
+                }
+                
+            }
+
+            accum_new_rows.push(sparse_row);
+
+        }
+
+        ParityCheckMatrix::new(accum_new_rows, nb_cols)
+
+    }
+
 }
 
 /// A wrapper over a check. It contains the positions of the bits in the check.
