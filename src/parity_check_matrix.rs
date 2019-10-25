@@ -554,26 +554,44 @@ impl ParityCheckMatrix {
 
     }
 
-    pub fn circulant(indices: &Vec<usize>, l: usize) -> ParityCheckMatrix{
+    pub fn circulant_down(indices: &Vec<usize>, l: usize) -> ParityCheckMatrix {
 
-        let mut prev_index = 0;
-        let mut p_n = ParityCheckMatrix::ident(l);
-        let p = ParityCheckMatrix::permu_matrix(l);
-        let mut accum = ParityCheckMatrix::empty_matrix(l);
+        let w = indices.len();
+        let mut checks: Vec<Vec<usize>> = Vec::with_capacity(l);
 
-        for i in indices {
+        for i in 0..l {
+            let mut new_row: Vec<usize> = Vec::with_capacity(w);
+            for j in indices {
 
-            for _ in prev_index .. *i {
-                p_n = p_n.mult(&p); // for each jump in the indices we have to create the good P^n
+                new_row.push((l-j+i)%l);
+
             }
-            
-            prev_index = *i; // we keep track of the previous index to know how many times we'll time to multiply by P
-
-            accum = accum.add(&p_n); 
-            
+            checks.push(new_row);
         }
 
-        accum
+        ParityCheckMatrix::new(checks, l)
+
+        
+    }
+
+    pub fn circulant_right(indices: &Vec<usize>, l: usize) -> ParityCheckMatrix{
+
+        let w = indices.len();
+        let mut checks: Vec<Vec<usize>> = Vec::with_capacity(l);
+
+        for i in 0..l {
+            let mut new_row: Vec<usize> = Vec::with_capacity(w);
+            for j in indices {
+
+                new_row.push((j+i)%l);
+
+            }
+            checks.push(new_row);
+        }
+
+        ParityCheckMatrix::new(checks, l)
+
+        
     }
 
 
