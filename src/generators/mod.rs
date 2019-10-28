@@ -10,26 +10,26 @@ pub trait CodeGenerator {
     /// Returns the code with the best performance among the `n_codes` generated codes. That is,
     /// the code that took the most iterations to obtain `n_failures_per_code` failures using an
     /// erausure decoder with probability `erasure_prob`.
-    fn find_best_code_from_erasure<D>(
-        &self,
-        erasure_prob: f64,
-        n_codes: usize,
-        n_failures_per_code: usize,
-    ) -> Option<(ParityCheckMatrix, SimulationResult)> {
-        let mut best_code = None;
-        let mut best_performance = SimulationResult::worse_result();
-        for _ in 0..n_codes {
-            let code = self.generate();
-            let decoder = ErasureDecoder::new(&code, erasure_prob);
-            let simulator = Simulator::new(&decoder);
-            let result = simulator.simulate_until_failures_are_found(n_failures_per_code, 1);
-            if result > best_performance {
-                best_performance = result;
-                best_code = Some(code);
-            }
-        }
-        best_code.map(|code| (code, best_performance))
-    }
+    // fn find_best_code_from_erasure<D>(
+    //     &self,
+    //     erasure_prob: f64,
+    //     n_codes: usize,
+    //     n_failures_per_code: usize,
+    // ) -> Option<(ParityCheckMatrix, SimulationResult)> {
+    //     let mut best_code = None;
+    //     let mut best_performance = SimulationResult::worse_result();
+    //     for _ in 0..n_codes {
+    //         let code = self.generate();
+    //         let decoder = ErasureDecoder::new(code, erasure_prob);
+    //         let simulator: Simulator<ErasureDecoder> = Simulator::new(decoder);
+    //         let result = simulator.simulate_until_failures_are_found(n_failures_per_code, 1);
+    //         if result > best_performance {
+    //             best_performance = result;
+    //             best_code = Some(code);
+    //         }
+    //     }
+    //     best_code.map(|code| (code, best_performance))
+    // }
 }
 
 pub mod random_check_generator;

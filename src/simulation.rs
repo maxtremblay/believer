@@ -73,24 +73,9 @@ where D: Decoder {
         Self { decoder }
     }
 
-    fn decoder(&self) -> &D{
+    fn decoder(&self) -> &D {
         &self.decoder
-
-impl SimulationResult {
-    pub fn worse_result() -> Self {
-        Self {
-            successes: 0,
-            failures: 1,
-        }
     }
-
-    pub fn best_result() -> Self {
-        Self {
-            successes: 1,
-            failures: 0,
-        }
-    }
-
 }
 
 pub struct ClassicalSimulator< D>
@@ -138,6 +123,13 @@ impl SimulationResult {
 
     pub fn total(&self) -> usize {
         self.failures() + self.successes()
+    }
+
+    pub fn worse_result() -> Self {
+        Self {
+            successes: 0,
+            failures: 1,
+        }
     }
 }
 

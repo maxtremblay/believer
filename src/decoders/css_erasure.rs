@@ -1,4 +1,4 @@
-use super::{Checks, Decoder, DecodingResult, DecoderBuilder};
+use super::{Decoder, DecodingResult, DecoderBuilder};
 use crate::ParityCheckMatrix;
 use rand::{thread_rng, Rng};
 
