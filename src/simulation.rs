@@ -65,6 +65,7 @@ where D: Decoder
     decoder: D
 }
 
+
 impl< D> Simulator< D> for CSSSimulator< D>
 where D: Decoder {
 
@@ -74,6 +75,20 @@ where D: Decoder {
 
     fn decoder(&self) -> &D{
         &self.decoder
+
+impl SimulationResult {
+    pub fn worse_result() -> Self {
+        Self {
+            successes: 0,
+            failures: 1,
+        }
+    }
+
+    pub fn best_result() -> Self {
+        Self {
+            successes: 1,
+            failures: 0,
+        }
     }
 
 }
@@ -174,5 +189,4 @@ impl CSSSimulationResult {
     pub fn total(&self) -> usize {
         self.total_failures() + self.successes()
     }
-
 }
