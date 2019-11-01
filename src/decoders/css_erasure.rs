@@ -67,11 +67,11 @@ impl CSSErasureDecoderBuilder {
 }
 
 impl DecoderBuilder for CSSErasureDecoderBuilder {
-    type Code = (ParityCheckMatrix, ParityCheckMatrix);
+    type Checks = (ParityCheckMatrix, ParityCheckMatrix);
     type Decoder = CSSErasureDecoder;
 
-    fn from_code(&self, code: Self::Code) -> Self::Decoder {
-        CSSErasureDecoder::new(code, self.erasure_prob)
+    fn build_from(&self, checks: Self::Checks) -> Self::Decoder {
+        CSSErasureDecoder::new(checks, self.erasure_prob)
     }
 }
 
@@ -142,7 +142,7 @@ mod test {
         let checks_z =
             ParityCheckMatrix::new(vec![vec![0, 1, 2, 3, 4, 5], vec![3, 4, 5, 6, 7, 8]], 9);
 
-        let decoder = builder.from_code((checks_x, checks_z));
+        let decoder = builder.build_from((checks_x, checks_z));
 
         assert_eq!(decoder.decode(&vec![]), ErasureResult::Success);
         for i in 0..9 {

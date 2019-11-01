@@ -105,11 +105,11 @@ impl ErasureDecoderBuilder {
 }
 
 impl DecoderBuilder for ErasureDecoderBuilder {
-    type Code = ParityCheckMatrix;
+    type Checks = ParityCheckMatrix;
     type Decoder = ErasureDecoder;
 
-    fn from_code(&self, code: Self::Code) -> Self::Decoder {
-        ErasureDecoder::new(code, self.erasure_prob)
+    fn build_from(&self, checks: Self::Checks) -> Self::Decoder {
+        ErasureDecoder::new(checks, self.erasure_prob)
     }
 }
 
@@ -153,7 +153,7 @@ mod test {
             vec![vec![0, 1, 2, 4], vec![0, 1, 3, 5], vec![0, 2, 3, 6]],
             7,
         );
-        let decoder = decoder_builder.from_code(code);
+        let decoder = decoder_builder.build_from(code);
 
         assert_eq!(decoder.decode(&vec![]), ErasureResult::Success);
         for i in 0..=6 {
