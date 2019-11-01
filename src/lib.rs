@@ -10,12 +10,15 @@ pub mod gf2;
 pub use gf2::GF2;
 
 pub mod generators;
-pub use generators::CodeGenerator;
+pub use generators::{CodeGenerator, RegularLDPCCodeGenerator};
 
 pub mod parity_check_matrix;
 pub use parity_check_matrix::ParityCheckMatrix;
 
+pub mod paulis;
+pub use paulis::Pauli;
+
 pub mod simulation;
-pub use simulation::{SimulationResult, Simulator};
+pub use simulation::{ClassicalSimulator, SimulationResult, Simulator};
 
 mod sparse_matrix;
