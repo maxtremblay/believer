@@ -1,47 +1,49 @@
+// use crate::ParityCheckMatrix;
 
-use crate::ParityCheckMatrix;
-
-pub trait Checks {
-}
-
-impl Checks for ParityCheckMatrix {}
-
-impl Checks for (ParityCheckMatrix,ParityCheckMatrix) {}
-
-pub trait Code<Cks: Checks> {
-    fn get_checks(&self) -> Cks;
-}
-
-
+/// TO COMMENT
 pub trait Decoder: Send + Sync {
     type Error;
     type Result: DecodingResult;
-    fn decode(&self, error: &Self::Error) -> Self::Result;
-    fn random_error(&self) -> Self::Error;
-}
-//    fn new(checks: &I, erasure_prob: f64);
+    type Checks;
 
+    /// TO COMMENT
+    fn decode(&self, error: &Self::Error) -> Self::Result;
+
+    /// TO COMMENT
+    fn random_error(&self) -> Self::Error;
+
+    /// TO COMMENT
+    fn take_checks(&mut self) -> Self::Checks;
+}
+
+/// TO COMMENT
 pub trait DecodingResult: Send + Sync {
+    /// TO COMMENT
     fn succeed(&self) -> bool;
 
+    /// TO COMMENT
     fn failed(&self) -> bool {
         !self.succeed()
     }
 }
 
-pub trait DecoderBuilder<C, D> where
-C: Checks,
-D: Decoder{
+/// TO COMMENT
+pub trait DecoderBuilder {
+    /// TO COMMENT
+    type Code;
 
-    fn from_code(&self,code: C) -> D;
+    /// TO COMMENT
+    type Decoder;
 
+    /// TO COMMENT
+    fn from_code(&self, code: Self::Code) -> Self::Decoder;
 }
 
 pub mod belief_propagation;
 pub use belief_propagation::{BPDecoder, BPResult};
 
 pub mod erasure;
-pub use erasure::{ErasureDecoder, ErasureResult};
+pub use erasure::{ErasureDecoder, ErasureDecoderBuilder, ErasureResult};
 
 pub mod css_erasure;
-pub use css_erasure::{CSSErasureDecoder, CSSErasureResult, CSSEDBuilder};
+pub use css_erasure::{CSSErasureDecoder, CSSErasureDecoderBuilder};

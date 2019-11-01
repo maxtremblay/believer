@@ -1,10 +1,12 @@
 //! A sparse implementation of a parity check matrix.
 
 use crate::GF2;
-use std::cmp::{max, min};
+use itertools::EitherOrBoth::{Both, Left, Right};
 use itertools::Itertools;
 use std::cmp::Ordering;
-use std::ops::{Add,Mul};
+use std::cmp::{max, min};
+use std::ops::{Add, Mul};
+
 // *******************
 // Parity Check Matrix
 // *******************
@@ -140,6 +142,20 @@ impl ParityCheckMatrix {
     /// ```
     pub fn dot(&self, vector: &[GF2]) -> Vec<GF2> {
         self.checks_iter().map(|check| check.dot(vector)).collect()
+    }
+
+    /// Creates an empty parity check matrix. That is, a parity check with 0 bit and 0 check.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use believer::*;
+    /// let empty_matrix = ParityCheckMatrix::empty();
+    /// assert_eq!(empty_matrix.n_bits(), 0);
+    /// assert_eq!(empty_matrix.n_checks(), 0);
+    /// ```
+    pub fn empty() -> Self {
+        Self::new(Vec::new(), 0)
     }
 
     /// Checks if a given `message` is a codeword of `self`.
@@ -341,8 +357,7 @@ impl ParityCheckMatrix {
         let mut active_col = 0;
         let mut row_lenght = 0;
 
-        self
-            .positions_iter()
+        self.positions_iter()
             .enumerate()
             .sorted_by(|(_, (r_0, c_0)), (_, (r_1, c_1))| match c_0.cmp(c_1) {
                 Ordering::Equal => r_0.cmp(r_1),
@@ -364,12 +379,12 @@ impl ParityCheckMatrix {
 
         row_ranges.push(*row_ranges.last().unwrap_or(&0) + row_lenght);
 
-        let n_bits = self.check_ranges().len()-1;
+        let n_bits = self.check_ranges().len() - 1;
 
         Self {
             check_ranges: row_ranges,
             bit_indices: column_indices,
-            n_bits
+            n_bits,
         }
     }
 
@@ -378,185 +393,185 @@ impl ParityCheckMatrix {
         let mut j = 0;
         let mut accum = GF2::B0;
 
-        while (i < v1.len()) && (j < v2.len()){
-
+        while (i < v1.len()) && (j < v2.len()) {
             if v1[i] == v2[j] {
                 accum = accum + GF2::B1;
                 i += 1;
                 j += 1;
-
             } else if v1[i] > v2[j] {
                 j += 1;
             } else {
                 i += 1;
             }
-
         }
 
         accum
-
     }
 
-    pub fn right_concat(&self, b: &ParityCheckMatrix) -> ParityCheckMatrix{// should check same number of rows
+    /// Concatenates a parity check matrix with an other.
+    /// 
+    /// # Example 
+    /// 
+    /// ```
+    /// # use believer::*;
+    /// let x = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2], vec![2, 3]], 4);
+    /// let z = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2, 3]], 4);
+    /// 
+    /// let concat_x_z = x.right_concat(&z);
+    /// let expected_concat_x_z = ParityCheckMatrix::new(
+    ///     vec![
+    ///         vec![0, 1, 4, 5],
+    ///         vec![1, 2, 5, 6, 7],
+    ///         vec![2, 3],
+    ///     ],
+    ///     8
+    /// );
+    /// assert_eq!(concat_x_z, expected_concat_x_z);
+    /// 
+    /// let concat_z_x = z.right_concat(&x);
+    /// let expected_concat_z_x = ParityCheckMatrix::new(
+    ///     vec![
+    ///         vec![0, 1, 4, 5],
+    ///         vec![1, 2, 3, 5, 6],
+    ///         vec![6, 7],
+    ///     ],
+    ///     8
+    /// );
+    /// assert_eq!(concat_z_x, expected_concat_z_x);
+    /// ```
+    pub fn right_concat(&self, other: &ParityCheckMatrix) -> ParityCheckMatrix {
+        let new_checks = self
+            .checks_iter()
+            .zip_longest(other.checks_iter())
+            .map(|x| match x {
+                Both(a, b) => {
+                    let mut check = a.positions().to_vec();
+                    check.extend(b.positions().iter().map(|p| p + self.n_bits()));
+                    check
+                },
+                Left(a) => a.positions().to_vec(),
+                Right(b) => b.positions().iter().map(|p| p + self.n_bits()).collect()
+            })
+            .collect();
 
-        let new_nb_bits = self.n_bits + b.n_bits;
-        let r1 = &self.check_ranges;
-        let r2 = &b.check_ranges;
-        let new_ranges: Vec<usize>  = r1.iter().zip(r2).map(|(x,y)| x + y).collect(); // we just need to sum the ranges together
-        let mut new_indices: Vec<usize> = Vec::with_capacity(self.bit_indices.len() + b.bit_indices.len());
-        
-        for i in 0..new_ranges.len()-1 { //for each new row of the output matrix
-
-            for j in r1[i]..r1[i+1] { // we get the bits of the first matrix
-                new_indices.push(self.bit_indices[j]);
-            }
-
-            for j in r2[i]..r2[i+1] {// them the ones from the second one, with a shift equal to the width of the first matrix
-                new_indices.push(b.bit_indices[j] + self.n_bits);
-            }
-
-        }
-
-        Self {
-            bit_indices: new_indices,
-            check_ranges: new_ranges,
-            n_bits: new_nb_bits
-
-        }
-
+        Self::new(new_checks, self.n_bits() + other.n_bits())
     }
 
     pub fn diag_concat(&self, hz: &ParityCheckMatrix) -> ParityCheckMatrix {
-
         let new_nb_bits = self.n_bits + hz.n_bits;
 
         let r1 = &self.check_ranges;
         let r2 = &hz.check_ranges;
 
-        let mut new_ranges: Vec<usize>  = Vec::with_capacity(r1.len()+r2.len());
-        let mut new_indices: Vec<usize> = Vec::with_capacity(self.bit_indices.len() + hz.bit_indices.len());
+        let mut new_ranges: Vec<usize> = Vec::with_capacity(r1.len() + r2.len());
+        let mut new_indices: Vec<usize> =
+            Vec::with_capacity(self.bit_indices.len() + hz.bit_indices.len());
 
         for r in r1 {
             new_ranges.push(*r);
         }
 
-        for r in r2 { //when adding the new ranges, we just need to shift these by the last range of the first matrix, since they all arrive after
-            new_ranges.push(*r+r1.last().cloned().unwrap_or(0));
+        for r in r2 {
+            //when adding the new ranges, we just need to shift these by the last range of the first matrix, since they all arrive after
+            new_ranges.push(*r + r1.last().cloned().unwrap_or(0));
         }
 
         for i in &self.bit_indices {
             new_indices.push(*i);
         }
-        for i in &hz.bit_indices { // similar idea here
+        for i in &hz.bit_indices {
+            // similar idea here
             new_indices.push(*i + self.n_bits);
         }
 
         Self {
             bit_indices: new_indices,
             check_ranges: new_ranges,
-            n_bits: new_nb_bits
-
+            n_bits: new_nb_bits,
         }
-
     }
 
-    pub fn gbc(&self, b: &ParityCheckMatrix) -> ParityCheckMatrix { // should check that A and B commute and that Hx*Hz^T = 0
+    pub fn gbc(&self, b: &ParityCheckMatrix) -> ParityCheckMatrix {
+        // should check that A and B commute and that Hx*Hz^T = 0
 
         let hx = self.right_concat(&b);
         let hz = b.transpose().right_concat(&self.transpose());
 
         hx.diag_concat(&hz)
-
     }
 
     pub fn permu_matrix(l: usize) -> ParityCheckMatrix {
-        
-        let ranges: Vec<usize> = (0..l+1).collect(); // ranges = [0,1,...,l] because we have one entries per row
+        let ranges: Vec<usize> = (0..l + 1).collect(); // ranges = [0,1,...,l] because we have one entries per row
         let mut indices: Vec<usize> = Vec::with_capacity(l);
 
-        indices.push(l-1);
+        indices.push(l - 1);
 
-        for i in 0..l-1 { // indices = [l-1,0,1,...,l-2]
+        for i in 0..l - 1 {
+            // indices = [l-1,0,1,...,l-2]
             indices.push(i);
         }
 
         Self {
             bit_indices: indices,
             check_ranges: ranges,
-            n_bits: l
-
+            n_bits: l,
         }
-
     }
 
-    
-
-    pub fn ident(l: usize) -> ParityCheckMatrix  { //returns the identity matrix of dimension l
+    pub fn ident(l: usize) -> ParityCheckMatrix {
+        //returns the identity matrix of dimension l
         let n_bits = l;
-        let check_ranges: Vec<usize> = (0..l+1).collect();
+        let check_ranges: Vec<usize> = (0..l + 1).collect();
         let bit_indices: Vec<usize> = (0..l).collect();
 
         Self {
             bit_indices,
             check_ranges,
-            n_bits
+            n_bits,
         }
     }
 
     pub fn empty_matrix(l: usize) -> ParityCheckMatrix {
         let n_bits = l;
-        let check_ranges: Vec<usize> = vec![0; l+1];
+        let check_ranges: Vec<usize> = vec![0; l + 1];
         let bit_indices: Vec<usize> = Vec::with_capacity(0);
 
         Self {
             check_ranges,
             bit_indices,
-            n_bits
+            n_bits,
         }
-
     }
 
     pub fn circulant_down(indices: &Vec<usize>, l: usize) -> ParityCheckMatrix {
-
         let w = indices.len();
         let mut checks: Vec<Vec<usize>> = Vec::with_capacity(l);
 
         for i in 0..l {
             let mut new_row: Vec<usize> = Vec::with_capacity(w);
             for j in indices {
-
-                new_row.push((l-j+i)%l);
-
+                new_row.push((l - j + i) % l);
             }
             checks.push(new_row);
         }
 
         ParityCheckMatrix::new(checks, l)
-
-        
     }
 
-    pub fn circulant_right(indices: &Vec<usize>, l: usize) -> ParityCheckMatrix{
-
+    pub fn circulant_right(indices: &Vec<usize>, l: usize) -> ParityCheckMatrix {
         let w = indices.len();
         let mut checks: Vec<Vec<usize>> = Vec::with_capacity(l);
 
         for i in 0..l {
             let mut new_row: Vec<usize> = Vec::with_capacity(w);
             for j in indices {
-
-                new_row.push((j+i)%l);
-
+                new_row.push((j + i) % l);
             }
             checks.push(new_row);
         }
 
         ParityCheckMatrix::new(checks, l)
-
-        
     }
-
-
 
     //
     // Private methods
@@ -639,96 +654,84 @@ impl<'a> Iterator for ChecksIter<'a> {
 }
 
 impl Add for &ParityCheckMatrix {
-
     type Output = ParityCheckMatrix;
 
-    fn add(self, b: &ParityCheckMatrix) -> ParityCheckMatrix { // should check same dimensions
+    fn add(self, b: &ParityCheckMatrix) -> ParityCheckMatrix {
+        // should check same dimensions
 
         let nb_bits = self.n_bits;
-        let nb_rows = self.check_ranges.len()-1;
+        let nb_rows = self.check_ranges.len() - 1;
         let mut new_rows: Vec<Vec<usize>> = Vec::with_capacity(nb_rows);
 
         for nb_row in 0..nb_rows {
             let a_row = self.check(nb_row).unwrap().positions;
             let b_row = b.check(nb_row).unwrap().positions;
 
-
             let mut accum: Vec<usize> = Vec::with_capacity(a_row.len() + b_row.len()); // in the worst case the 1s are in different places and don't cancel out
 
             let mut i = 0;
             let mut j = 0;
 
-            while (i < a_row.len()) && (j < b_row.len()){
-
-                if a_row[i] == b_row[j] { // 1+1, we do nothing
+            while (i < a_row.len()) && (j < b_row.len()) {
+                if a_row[i] == b_row[j] {
+                    // 1+1, we do nothing
                     i += 1;
                     j += 1;
-
-                } else if a_row[i] > b_row[j] { 
+                } else if a_row[i] > b_row[j] {
                     accum.push(b_row[j]);
                     j += 1;
                 } else {
                     accum.push(a_row[i]);
                     i += 1;
                 }
-
             }
 
             // because a and b can have different length we take care of adding potential leftovers
             if j >= b_row.len() {
-                for k in i .. a_row.len() {
+                for k in i..a_row.len() {
                     accum.push(a_row[k]);
                 }
             } else if i >= a_row.len() {
-                for k in j .. b_row.len() {
+                for k in j..b_row.len() {
                     accum.push(b_row[k]);
                 }
             }
-            
+
             new_rows.push(accum);
-
-
         }
 
         ParityCheckMatrix::new(new_rows, nb_bits)
-
     }
-
 }
 
 impl Mul for &ParityCheckMatrix {
-
     type Output = ParityCheckMatrix;
 
-    fn mul(self, b: &ParityCheckMatrix) -> ParityCheckMatrix{ // should check for dimensions, needs some optimization
+    fn mul(self, b: &ParityCheckMatrix) -> ParityCheckMatrix {
+        // should check for dimensions, needs some optimization
 
         //let mut new_row = vec![GF2::B0; B.n_bits]; // initializes vector that will temporarily store a computed row of the end matrix
         let nb_cols = b.n_bits;
-        let nb_rows = self.check_ranges.len()-1;
+        let nb_rows = self.check_ranges.len() - 1;
         let mut accum_new_rows: Vec<Vec<usize>> = Vec::with_capacity(nb_rows);
 
         for v1 in self.checks_iter() {
-
-            let mut sparse_row = Vec::with_capacity(nb_cols);// in the worst case we have entries for every column
+            let mut sparse_row = Vec::with_capacity(nb_cols); // in the worst case we have entries for every column
 
             for (i, v2) in b.transpose().checks_iter().enumerate() {
+                let dot_res = ParityCheckMatrix::sparse_dot(v1.positions(), v2.positions());
 
-                let dot_res = ParityCheckMatrix::sparse_dot(v1.positions(), v2.positions()); 
-
-                if let GF2::B1 = dot_res { //only if the dot product returns a non null value do we mention the column in the sparse row
+                if let GF2::B1 = dot_res {
+                    //only if the dot product returns a non null value do we mention the column in the sparse row
                     sparse_row.push(i);
                 }
-                
             }
 
             accum_new_rows.push(sparse_row);
-
         }
 
         ParityCheckMatrix::new(accum_new_rows, nb_cols)
-
     }
-
 }
 
 /// A wrapper over a check. It contains the positions of the bits in the check.
