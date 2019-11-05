@@ -42,7 +42,7 @@ impl ErasureDecoder {
     }
 }
 
-impl<'a> Decoder for ErasureDecoder {
+impl Decoder for ErasureDecoder {
     // The error is the positions of the erased bits.
     type Error = Vec<usize>;
     type Result = ErasureResult;
