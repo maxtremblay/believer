@@ -18,7 +18,7 @@ impl Pauli {
     /// ```
     /// # use believer::*;
     /// let paulis = vec![Pauli::I, Pauli::X, Pauli::Y, Pauli::Z];
-    /// let gf4_paulis = paulis.iter().map(|p| p.as_gf4()).collect();
+    /// let gf4_paulis: Vec<(usize, usize)> = paulis.iter().map(|p| p.as_gf4()).collect();
     /// assert_eq!(gf4_paulis[0], (0, 0)); // I
     /// assert_eq!(gf4_paulis[1], (1, 0)); // X
     /// assert_eq!(gf4_paulis[2], (1, 1)); // Y

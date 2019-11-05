@@ -1,11 +1,12 @@
 //! Toolbox to simulate error correction codes performance.
 
 use crate::{Decoder, DecodingResult};
+use rayon::prelude::*;
 
 pub trait Simulator<D>
-where D: Decoder
-{ 
-
+where
+    D: Decoder,
+{
     fn new(decoder: D) -> Self;
 
     fn decoder(&self) -> &D;
@@ -26,49 +27,43 @@ where D: Decoder
         }
     }
 
-    fn simulate_until_failures_are_found(
-        &self,
-        n_threads: usize,
-        n_failures_per_thread: usize,
-    ) -> SimulationResult {
+    fn simulate_until_events_are_found(&self, n_events: usize) -> SimulationResult {
         let decoder = self.decoder();
-        let successes = (0..n_threads)
-            .map::<usize, _>(|_| {
-                (0..n_failures_per_thread)
-                    .map(|_| {
-                        let mut successes = 0;
-                        let mut has_failed = false;
-                        while !has_failed {
-                            let error = decoder.random_error();
-                            if decoder.decode(&error).succeed() {
-                                successes += 1;
-                            } else {
-                                has_failed = true;
-                            }
-                        }
-                        successes
-                    })
-                    .sum()
+        let (succ, fail) = (0..n_events)
+            .into_par_iter()
+            .map(|_| {
+                let mut successes = 0;
+                let mut failures = 0;
+                while successes == 0 || failures == 0 {
+                    let error = decoder.random_error();
+                    if decoder.decode(&error).succeed() {
+                        successes += 1;
+                    } else {
+                        failures += 1;
+                    }
+                }
+                (successes, failures)
             })
-            .sum();
+            .reduce(|| (0, 0), |(a_s, a_f), (s, f)| (a_s + s, a_f + f));
 
-         SimulationResult {
-            successes,
-            failures: n_failures_per_thread * n_threads,
+        SimulationResult {
+            successes: succ,
+            failures: fail,
         }
     }
 }
 
 pub struct CSSSimulator<D>
-where D: Decoder
+where
+    D: Decoder,
 {
-    decoder: D
+    decoder: D,
 }
 
-
-impl< D> Simulator< D> for CSSSimulator< D>
-where D: Decoder {
-
+impl<D> Simulator<D> for CSSSimulator<D>
+where
+    D: Decoder,
+{
     fn new(decoder: D) -> Self {
         Self { decoder }
     }
@@ -78,26 +73,25 @@ where D: Decoder {
     }
 }
 
-pub struct ClassicalSimulator< D>
-where D: Decoder
+pub struct ClassicalSimulator<D>
+where
+    D: Decoder,
 {
-    decoder:  D
+    decoder: D,
 }
 
-impl< D> Simulator< D> for ClassicalSimulator< D>
-where D: Decoder
+impl<D> Simulator<D> for ClassicalSimulator<D>
+where
+    D: Decoder,
 {
-
     fn new(decoder: D) -> Self {
         Self { decoder }
     }
 
-    fn decoder(&self) -> &D{
+    fn decoder(&self) -> &D {
         &self.decoder
     }
-
 }
-
 
 pub struct SimulationResult {
     successes: usize,
@@ -141,7 +135,6 @@ pub struct CSSSimulationResult {
 }
 
 impl CSSSimulationResult {
-
     pub fn x_failures(&self) -> usize {
         self.x_failures
     }

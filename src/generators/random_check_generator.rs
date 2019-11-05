@@ -1,57 +1,142 @@
+use rand::distributions::WeightedIndex;
+use rand::{thread_rng, Rng};
+
 /// A `RandomCheckGenerator` helps generating checks for a code while respecting some global
 /// constraints.
 ///
 /// Constraints are bit and check degrees and minimal girth.
 pub struct RandomCheckGenerator {
+    max_bit_degrees: Vec<usize>,
     bit_degrees: Vec<usize>,
-    minimal_girth: usize,
-    active_bits: Option<Vec<usize>>,
-    distribution: Option<Vec<f64>>,
+    adjacencies: Vec<Vec<usize>>,
+    ajdacency_depth: usize,
+    active_bits: Vec<usize>,
+    distribution: Vec<f64>,
 }
 
 impl RandomCheckGenerator {
     pub fn generate(&mut self, check_degree: usize) -> Option<Vec<usize>> {
-        unimplemented!()
+        let mut check = Vec::with_capacity(check_degree);
+        let mut rng = thread_rng();
+        for _ in 0..check_degree {
+            self.add_random_bit_to_check(&mut check, &mut rng);
+        }
+        if check.len() == check_degree {
+            self.update_adjacency(&check);
+            check.iter().for_each(|bit| self.bit_degrees[*bit] += 1);
+            check.sort();
+            Some(check)
+        } else {
+            None
+        }
     }
 
-    pub fn new(bit_degrees: Vec<usize>, minimal_girth: usize) -> Self {
+    fn add_random_bit_to_check<R: Rng + ?Sized>(&self, check: &mut Vec<usize>, rng: &mut R) {
+        let availables: Vec<usize> = self
+            .active_bits
+            .iter()
+            .filter(|bit| self.bit_degrees[**bit] < self.max_bit_degrees[**bit])
+            .filter(|bit| !check.contains(bit))
+            .filter(|bit| check.iter().all(|b| self.are_not_adjacent(b, bit)))
+            .map(|bit| *bit)
+            .collect();
+        let probs: Vec<f64> = availables
+            .iter()
+            .map(|bit| self.distribution[*bit])
+            .collect();
+        if probs.len() > 0 && probs.iter().sum::<f64>() > 0.0 {
+            let distribution = WeightedIndex::new(Self::normalize(&probs)).unwrap();
+            check.push(availables[rng.sample(distribution)]);
+        }
+    }
+
+    fn are_not_adjacent(&self, bit_0: &usize, bit_1: &usize) -> bool {
+        !self.adjacencies[*bit_0].contains(bit_1) && !self.adjacencies[*bit_1].contains(bit_0)
+    }
+
+    fn update_adjacency(&mut self, check: &[usize]) {
+        check.iter().for_each(|bit_0| {
+            check.iter().for_each(|bit_1| {
+                let adjacent_bits = self.adjacent_bits(bit_0, self.ajdacency_depth);
+                self.adjacencies[*bit_1].extend_from_slice(&adjacent_bits);
+            });
+        });
+    }
+
+    fn adjacent_bits(&self, bit: &usize, depth: usize) -> Vec<usize> {
+        if depth == 0 {
+            Vec::new()
+        } else if depth == 1 {
+            vec![*bit]
+        } else {
+            self.adjacencies[*bit]
+                .iter()
+                .flat_map(|b| self.adjacent_bits(b, depth - 1))
+                .collect()
+        }
+    }
+
+    pub fn new(max_bit_degrees: Vec<usize>, minimal_girth: usize) -> Self {
+        let n_bits = max_bit_degrees.len();
         Self {
-            bit_degrees,
-            minimal_girth,
-            active_bits: None,
-            distribution: None,
+            max_bit_degrees,
+            bit_degrees: vec![0; n_bits],
+            ajdacency_depth: if minimal_girth > 4 {
+                (minimal_girth - 4) / 2
+            } else {
+                0
+            },
+            adjacencies: (0..n_bits).map(|b| vec![b]).collect(),
+            active_bits: (0..n_bits).collect(),
+            distribution: vec![1.0 / n_bits as f64; n_bits],
         }
     }
 
     pub fn over_all_bits(&mut self) -> &mut Self {
-        self.active_bits = None;
+        self.active_bits = (0..self.n_bits()).collect();
         self
     }
 
     pub fn over_bits(&mut self, mut bits: Vec<usize>) -> &mut Self {
         bits.sort();
         bits.dedup();
-        self.active_bits = Some(bits);
+        self.active_bits = bits;
         self
     }
 
     pub fn with_distribution(&mut self, probs: &[f64]) -> &mut Self {
-        unimplemented!()
+        if probs.len() != self.n_bits() {
+            panic!("wrong number of probabilities");
+        }
+        self.distribution = Self::normalize(probs);
+        self
     }
 
     pub fn with_uniform_distribution(&mut self) -> &mut Self {
-        unimplemented!()
+        self.distribution = vec![1.0 / self.n_bits() as f64; self.n_bits()];
+        self
     }
 
     pub fn without(&mut self, bits: &[usize]) -> &mut Self {
-        if let Some(active_bits) = &mut self.active_bits {
-            bits.iter().for_each(|bit| {
-                if let Some(index) = active_bits.iter().position(|b| b == bit) {
-                    active_bits.swap_remove(index);
-                }
-            })
-        }
+        bits.iter().for_each(|bit| {
+            if let Some(index) = self.active_bits.iter().position(|b| b == bit) {
+                self.active_bits.swap_remove(index);
+            }
+        });
         self
+    }
+
+    pub fn n_bits(&self) -> usize {
+        self.bit_degrees.len()
+    }
+
+    fn normalize(probs: &[f64]) -> Vec<f64> {
+        let sum: f64 = probs.iter().sum();
+        if sum == 0.0 {
+            probs.to_vec()
+        } else {
+            probs.iter().map(|p| p / sum).collect()
+        }
     }
 }
 
@@ -129,12 +214,15 @@ mod test {
 
     #[test]
     fn generate_bit_according_to_distribution() {
-        let mut generator = RandomCheckGenerator::new(vec![2; 5], 0);
+        let mut generator = RandomCheckGenerator::new(vec![3; 5], 0);
         generator.with_distribution(&[0.25, 0.25, 0.0, 0.25, 0.25]);
 
         // Generate all degree 2 checks from the given distribution
-        for _ in 0..6 {
-            assert_eq!(generator.generate(2).is_some(), true);
+        for i in 0..6 {
+            println!("-- {} --", i);
+            let x = generator.generate(2);
+            println!("{:?}", x);
+            assert_eq!(x.is_some(), true);
         }
         assert_eq!(generator.generate(2), None);
 

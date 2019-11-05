@@ -1,24 +1,27 @@
 //! A belief propapagation decoder for classical and quantum sparse error correcting codes.
 
 pub mod channel;
-pub use channel::BinaryChannel;
+pub use channel::*;
 
 pub mod decoders;
-pub use decoders::{BPDecoder, BPResult, Decoder, DecodingResult, ErasureDecoder, ErasureResult};
+pub use decoders::*;
 
 pub mod gf2;
-pub use gf2::GF2;
+pub use gf2::*;
+
+pub mod gf4_stabilizers;
+pub use gf4_stabilizers::*;
 
 pub mod generators;
-pub use generators::{CodeGenerator, RegularLDPCCodeGenerator};
+pub use generators::*;
 
 pub mod parity_check_matrix;
-pub use parity_check_matrix::ParityCheckMatrix;
+pub use parity_check_matrix::*;
 
 pub mod paulis;
-pub use paulis::Pauli;
+pub use paulis::*;
 
 pub mod simulation;
-pub use simulation::{ClassicalSimulator, SimulationResult, Simulator};
+pub use simulation::*;
 
 mod sparse_matrix;
