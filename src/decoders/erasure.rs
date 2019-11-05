@@ -82,10 +82,10 @@ impl Decoder for ErasureDecoder {
 /// let erasure_prob = 0.25;
 /// let builder = ErasureDecoderBuilder::new(erasure_prob);
 /// let checks = ParityCheckMatrix::(vec![vec![0, 1], vec![1, 2]], 3);
-/// let decoder = builder.from_code(checks);
+/// let decoder = builder.build_from(checks);
 ///
 /// let other_checks = ParityCheckMatrix::new(vec![vec![0, 1], vec![0, 2]], 3);
-/// let other_decoder = builder.from_code(checks);
+/// let other_decoder = builder.build_from(checks);
 /// ```
 pub struct ErasureDecoderBuilder {
     erasure_prob: f64,
