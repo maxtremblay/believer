@@ -3,10 +3,10 @@
 //! The implementation is based on "Error Correction Coding: Mathematical Methods
 //! and Algorithms (Chapter 15), Todd K. Moon, 2005, Wiley".
 
-use super::{Decoder, DecodingResult};
+use super::{Decoder, DecoderBuilder, DecodingResult};
+use crate::ParityCheckMatrix;
 use crate::channel::BinaryChannel;
 use crate::sparse_matrix::{SparseMatrix, Transposer};
-use crate::ParityCheckMatrix;
 use crate::GF2;
 
 /// A `BPDecoder` can decode a message received from a given `channel` using a given
@@ -39,17 +39,17 @@ use crate::GF2;
 /// let decoded_message = decoder.decode(&received_message);
 /// assert_eq!(decoded_message, BPResult::Codeword(vec![GF2::B0; 5]));
 /// ```
-pub struct BPDecoder<'a, C>
+pub struct BPDecoder<C>
 where
     C: BinaryChannel,
 {
-    channel: &'a C,
-    parity_check: &'a ParityCheckMatrix,
+    channel: C,
+    parity_check: ParityCheckMatrix,
     transposer: Transposer,
     max_iters: usize,
 }
 
-impl<'a, C: BinaryChannel> BPDecoder<'a, C> {
+impl<C: BinaryChannel> BPDecoder<C> {
     // *
     // Public methods
     // *
@@ -126,11 +126,12 @@ impl<'a, C: BinaryChannel> BPDecoder<'a, C> {
     /// // The decoder
     /// let decoder = BPDecoder::new(&channel, &parity_check, max_iters);
     /// ```
-    pub fn new(channel: &'a C, parity_check: &'a ParityCheckMatrix, max_iters: usize) -> Self {
+    pub fn new(channel: C, parity_check: ParityCheckMatrix, max_iters: usize) -> Self {
+        let transposer = Transposer::new(&parity_check);
         Self {
             channel,
             parity_check,
-            transposer: Transposer::new(parity_check),
+            transposer,
             max_iters,
         }
     }
@@ -144,7 +145,7 @@ impl<'a, C: BinaryChannel> BPDecoder<'a, C> {
         let intrinsec = self.channel.message_likelyhood(message);
         let total = intrinsec.clone();
         let extrinsec =
-            SparseMatrix::from_parity_check(self.parity_check, vec![0.0; self.parity_check.len()]);
+            SparseMatrix::from_parity_check(&self.parity_check, vec![0.0; self.parity_check.len()]);
         Likelyhoods {
             decoder: &self,
             total,
@@ -153,13 +154,11 @@ impl<'a, C: BinaryChannel> BPDecoder<'a, C> {
         }
     }
 }
-/*
-impl<C> Decoder for BPDecoder<C>
-where
-    C: BinaryChannel,
-{
+
+impl<C: BinaryChannel> Decoder for BPDecoder<C> {
     type Error = Vec<GF2>;
     type Result = BPResult;
+    type Checks = ParityCheckMatrix;
 
     /// Decodes a given `message` doing at most `max_iters` iterations. Returns
     /// `Some(codeword)` if the decoder converge to a solution of `None` if
@@ -194,12 +193,12 @@ where
     /// let impossible_decoded = decoder.decode(&impossible_message);
     /// assert_eq!(impossible_decoded, BPResult::GotStuck);
     /// ```
-    fn decode(&self, message: &Self::Error) -> Self::Result {
-        if message.len() != self.n_bits() {
-            panic!("message doesn't have the right length")
+    fn decode(&self, error: &Self::Error) -> Self::Result {
+        if error.len() != self.n_bits() {
+            panic!("error doesn't have the right length")
         }
 
-        let mut likelyhoods = self.init_likelyhoods(message);
+        let mut likelyhoods = self.init_likelyhoods(error);
         let mut iter = 0;
         let mut result = None;
 
@@ -227,8 +226,12 @@ where
     fn random_error(&self) -> Self::Error {
         self.channel.sample_uniform(GF2::B0, self.n_bits())
     }
+
+    fn take_checks(&mut self) -> Self::Checks {
+        std::mem::replace(&mut self.parity_check, ParityCheckMatrix::empty())
+    }
 }
-*/
+
 // ****************************
 // Public utilitary constructs
 // ****************************
@@ -255,15 +258,55 @@ impl DecodingResult for BPResult {
     }
 }
 
+/// Builder for `BPDecoder`.
+///
+/// # Example
+///
+/// ```
+/// # use believer::*;
+/// let channel = channel::BinarySymmetricChannel::new(0.2);
+/// let max_iters = 20; 
+/// let builder = BPDecoderBuilder::new(channel, max_iters);
+/// let checks = ParityCheckMatrix::(vec![vec![0, 1], vec![1, 2]], 3);
+/// let decoder = builder.build_from(checks);
+///
+/// let other_checks = ParityCheckMatrix::new(vec![vec![0, 1], vec![0, 2]], 3);
+/// let other_decoder = builder.build_from(checks);
+/// ```
+pub struct BPDecoderBuilder<C> 
+    where C: BinaryChannel
+{
+    channel: C,
+    max_iters: usize,
+}
+
+impl<C: BinaryChannel> BPDecoderBuilder<C> {
+    /// Creates an erasure decoder builder.
+    pub fn new(channel: C, max_iters: usize) -> Self {
+        Self { channel, max_iters }
+    }
+}
+
+impl<C: BinaryChannel + Clone> DecoderBuilder for BPDecoderBuilder<C> {
+    type Checks = ParityCheckMatrix;
+    type Decoder = BPDecoder<C>;
+
+    fn build_from(&self, checks: Self::Checks) -> Self::Decoder {
+        BPDecoder::new(self.channel.clone(), checks, self.max_iters)
+    }
+}
+
 // ****************************
 // Private utilitary constructs
 // ****************************
 
+// Evole the likelyhood of the decoder. See "Error Correction Coding: Mathematical Methods
+// and Algorithms (Chapter 15), Todd K. Moon, 2005, Wiley" for details.
 struct Likelyhoods<'a, C>
 where
     C: BinaryChannel,
 {
-    decoder: &'a BPDecoder<'a, C>,
+    decoder: &'a BPDecoder<C>,
     total: Vec<f64>,
     intrinsec: Vec<f64>,
     extrinsec: SparseMatrix<'a>,
@@ -301,7 +344,8 @@ impl<'a, C: BinaryChannel> Likelyhoods<'a, C> {
             })
             .collect();
 
-        self.extrinsec = SparseMatrix::from_parity_check(self.decoder.parity_check, updated_values);
+        self.extrinsec = 
+            SparseMatrix::from_parity_check(&self.decoder.parity_check, updated_values);
     }
 
     fn is_stuck(&self) -> bool {
@@ -316,33 +360,75 @@ impl<'a, C: BinaryChannel> Likelyhoods<'a, C> {
     }
 }
 
-// #[cfg(test)]
-// mod test {
-//     use super::*;
-//     use crate::channel::BinarySymmetricChannel;
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::channel::BinarySymmetricChannel;
 
-//     #[test]
-//     fn general_usage() {
-//         // Tests with a 3 bits repetition code over a
-//         // bsc with error probability of 0.2.s
-//         let channel = BinarySymmetricChannel::new(0.2);
-//         let parity_check = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2]], 3);
-//         let decoder = BPDecoder::new(&channel, &parity_check, 5);
+    #[test]
+    fn repetition_code() {
+        // Tests with a 3 bits repetition code over a bsc with error probability of 0.2.
+        let channel = BinarySymmetricChannel::new(0.2);
+        let parity_check = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2]], 3);
+        let decoder = BPDecoder::new(channel, parity_check, 5);
 
-//         // Should decode 1 error.
-//         let decoded_message = decoder.decode(&vec![GF2::B0, GF2::B0, GF2::B1]);
-//         assert_eq!(decoded_message, BPResult::Codeword(vec![GF2::B0; 3]));
+        // Should decode 1 error.
+        let decoded_message = decoder.decode(&vec![GF2::B0, GF2::B0, GF2::B1]);
+        assert_eq!(decoded_message, BPResult::Codeword(vec![GF2::B0; 3]));
 
-//         let decoded_message = decoder.decode(&vec![GF2::B1, GF2::B0, GF2::B1]);
-//         assert_eq!(decoded_message, BPResult::Codeword(vec![GF2::B1; 3]));
-//     }
+        let decoded_message = decoder.decode(&vec![GF2::B1, GF2::B0, GF2::B1]);
+        assert_eq!(decoded_message, BPResult::Codeword(vec![GF2::B1; 3]));
+    }
 
-//     #[test]
-//     fn get_stuck_in_cycle() {
-//         let channel = BinarySymmetricChannel::new(0.2);
-//         let parity_check = ParityCheckMatrix::new(vec![vec![0, 1]], 2);
-//         let decoder = BPDecoder::new(&channel, &parity_check, 10);
+    #[test]
+    fn hamming_code_from_builder() {
+        let channel = BinarySymmetricChannel::new(0.2);
+        let max_iters = 10;
+        let builder = BPDecoderBuilder::new(channel, max_iters);
+        let checks = ParityCheckMatrix::new(
+            vec![
+                vec![0, 1, 2, 4],
+                vec![0, 1, 3, 5],
+                vec![0, 2, 3, 6],
+            ],
+            7
+        );
+        let decoder = builder.build_from(checks);
 
-//         assert_eq!(decoder.decode(&vec![GF2::B0, GF2::B1]), BPResult::GotStuck);
-//     }
-// }
+        // Should decode no error
+        let decoded = decoder.decode(&vec![GF2::B0; 7]);
+        assert_eq!(decoded, BPResult::Codeword(vec![GF2::B0; 7]));
+        
+        // Should decode 1 error
+        for i in 0..7 {
+            let mut message = vec![GF2::B0; 7];
+            message[i] = GF2::B1;
+            let decoded = decoder.decode(&message);
+            assert_eq!(decoded, BPResult::Codeword(vec![GF2::B0; 7]));
+
+            let mut message = vec![GF2::B1; 7];
+            message[i] = GF2::B0;
+            let decoded = decoder.decode(&message);
+            assert_eq!(decoded, BPResult::Codeword(vec![GF2::B1; 7]));
+        }
+
+        // Should wrongly decode 2 error
+        let mut message = vec![GF2::B0; 7];
+        message[0] = GF2::B1;
+        message[1] = GF2::B1;
+        let decoded = decoder.decode(&message);
+        assert_eq!(
+            decoded,
+            BPResult::Codeword(vec![GF2::B1, GF2::B1, GF2::B0, GF2::B0, GF2::B0, GF2::B0, GF2::B1])
+        );
+    }
+
+    #[test]
+    fn get_stuck_in_cycle() {
+        let channel = BinarySymmetricChannel::new(0.2);
+        let parity_check = ParityCheckMatrix::new(vec![vec![0, 1]], 2);
+        let decoder = BPDecoder::new(channel, parity_check, 10);
+
+        assert_eq!(decoder.decode(&vec![GF2::B0, GF2::B1]), BPResult::GotStuck);
+    }
+}
