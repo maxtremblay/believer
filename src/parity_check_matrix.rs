@@ -220,6 +220,48 @@ impl ParityCheckMatrix {
         self.bit_indices.len()
     }
 
+    /// Returns a truncated parity check matrix with only the column of the given `bits`.
+    /// 
+    /// # Example
+    /// 
+    /// ```
+    /// # use believer::*;
+    /// let checks = ParityCheckMatrix::new(
+    ///     vec![
+    ///         vec![0, 1, 2],
+    ///         vec![2, 3, 4],
+    ///         vec![0, 2, 4],
+    ///         vec![1, 3],
+    ///     ],
+    ///     5  
+    /// );
+    /// let truncated_checks = ParityCheckMatrix::new(
+    ///     vec![
+    ///         vec![0, 1],
+    ///         vec![4],
+    ///         vec![0, 4],
+    ///         vec![1],
+    ///     ],
+    ///     5  
+    /// );
+    /// 
+    /// assert_eq!(checks.keep(&[0, 1, 4]), truncated_checks);
+    /// ```
+    pub fn keep(&self, bits: &[usize]) -> Self {
+        let checks = self
+            .checks_iter()
+            .map(|check| {
+                check
+                    .positions()
+                    .iter()
+                    .filter(|&bit| bits.iter().any(|b| b == bit))
+                    .cloned()
+                    .collect()
+            })
+            .collect();
+        Self::new(checks, self.n_bits())
+    }
+
     /// Returns the number of bits in `self`.
     pub fn n_bits(&self) -> usize {
         self.n_bits
@@ -409,14 +451,14 @@ impl ParityCheckMatrix {
     }
 
     /// Concatenates a parity check matrix with an other.
-    /// 
-    /// # Example 
-    /// 
+    ///
+    /// # Example
+    ///
     /// ```
     /// # use believer::*;
     /// let x = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2], vec![2, 3]], 4);
     /// let z = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2, 3]], 4);
-    /// 
+    ///
     /// let concat_x_z = x.right_concat(&z);
     /// let expected_concat_x_z = ParityCheckMatrix::new(
     ///     vec![
@@ -427,7 +469,7 @@ impl ParityCheckMatrix {
     ///     8
     /// );
     /// assert_eq!(concat_x_z, expected_concat_x_z);
-    /// 
+    ///
     /// let concat_z_x = z.right_concat(&x);
     /// let expected_concat_z_x = ParityCheckMatrix::new(
     ///     vec![
@@ -448,9 +490,9 @@ impl ParityCheckMatrix {
                     let mut check = a.positions().to_vec();
                     check.extend(b.positions().iter().map(|p| p + self.n_bits()));
                     check
-                },
+                }
                 Left(a) => a.positions().to_vec(),
-                Right(b) => b.positions().iter().map(|p| p + self.n_bits()).collect()
+                Right(b) => b.positions().iter().map(|p| p + self.n_bits()).collect(),
             })
             .collect();
 
@@ -572,6 +614,38 @@ impl ParityCheckMatrix {
 
         ParityCheckMatrix::new(checks, l)
     }
+    
+    /// Returns a truncated parity check matrix where the column of the given `bits` are remove.
+    /// 
+    /// # Example
+    /// 
+    /// ```
+    /// # use believer::*;
+    /// let checks = ParityCheckMatrix::new(
+    ///     vec![
+    ///         vec![0, 1, 2],
+    ///         vec![2, 3, 4],
+    ///         vec![0, 2, 4],
+    ///         vec![1, 3],
+    ///     ],
+    ///     5  
+    /// );
+    /// let truncated_checks = ParityCheckMatrix::new(
+    ///     vec![
+    ///         vec![1],
+    ///         vec![3, 4],
+    ///         vec![4],
+    ///         vec![1, 3],
+    ///     ],
+    ///     5  
+    /// );
+    /// 
+    /// assert_eq!(checks.without(&[0, 2]), truncated_checks);
+    /// ```
+    pub fn without(&self, bits: &[usize]) -> Self {
+        let to_keep: Vec<usize> = (0..9).filter(|x| !bits.contains(x)).collect();
+        self.keep(&to_keep)
+    }
 
     //
     // Private methods
@@ -606,21 +680,6 @@ impl ParityCheckMatrix {
     // Returns a reference to `self.bit_indices
     pub(crate) fn bit_indices(&self) -> &[usize] {
         &self.bit_indices
-    }
-
-    pub(crate) fn keep(&self, bits: &[usize]) -> Self {
-        let checks = self
-            .checks_iter()
-            .map(|check| {
-                check
-                    .positions()
-                    .iter()
-                    .filter(|&bit| bits.iter().any(|b| b == bit))
-                    .cloned()
-                    .collect()
-            })
-            .collect();
-        Self::new(checks, self.len())
     }
 }
 
