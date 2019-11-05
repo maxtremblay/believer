@@ -12,11 +12,12 @@ use rand::{thread_rng, Rng};
 ///
 /// ```
 /// # use believer::*;
-/// let x_checks = ParityCheckMatrix::(vec![vec![0, 1], vec![1, 2]], 3);
-/// let z_checks = ParityCheckMatrix::(vec![vec![0, 1], vec![1, 2]], 3);
+/// let x_checks = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2]], 3);
+/// let z_checks = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2]], 3);
 /// let erasure_prob = 0.25;
-/// let decoder = QuantumErasureDecoder::new((x_checks, z_checks), erasure_prob);
-/// decoder.decode(decoder.random_error());
+/// let stabilizers = GF4Stabilizers::from_parity_check_matrices(x_checks, z_checks);
+/// let decoder = QuantumErasureDecoder::new(stabilizers, erasure_prob);
+/// decoder.decode(&decoder.random_error());
 /// ```
 pub struct QuantumErasureDecoder {
     stabilizers: GF4Stabilizers,

@@ -30,7 +30,7 @@ use crate::GF2;
 ///     5
 /// );
 ///
-/// let decoder = BPDecoder::new(&channel, &parity_check, 10);
+/// let decoder = BPDecoder::new(channel, parity_check, 10);
 ///
 /// // A message with 2 errors.
 /// let received_message = vec![GF2::B1, GF2::B1, GF2::B0, GF2::B0, GF2::B0];
@@ -70,7 +70,7 @@ impl<C: BinaryChannel> BPDecoder<C> {
     ///     ],
     ///     5
     /// );
-    /// let decoder = BPDecoder::new(&channel, &parity_check, 3);
+    /// let decoder = BPDecoder::new(channel, parity_check, 3);
     ///
     /// assert_eq!(decoder.n_bits(), 5);
     /// ```
@@ -94,7 +94,7 @@ impl<C: BinaryChannel> BPDecoder<C> {
     ///     ],
     ///     5
     /// );
-    /// let decoder = BPDecoder::new(&channel, &parity_check, 3);
+    /// let decoder = BPDecoder::new(channel, parity_check, 3);
     ///
     /// assert_eq!(decoder.n_checks(), 4);
     /// ```
@@ -124,7 +124,7 @@ impl<C: BinaryChannel> BPDecoder<C> {
     /// let max_iters = 10;
     ///
     /// // The decoder
-    /// let decoder = BPDecoder::new(&channel, &parity_check, max_iters);
+    /// let decoder = BPDecoder::new(channel, parity_check, max_iters);
     /// ```
     pub fn new(channel: C, parity_check: ParityCheckMatrix, max_iters: usize) -> Self {
         let transposer = Transposer::new(&parity_check);
@@ -181,7 +181,7 @@ impl<C: BinaryChannel> Decoder for BPDecoder<C> {
     ///     ],
     ///     4
     /// );
-    /// let decoder = BPDecoder::new(&channel, &parity_check, 10);
+    /// let decoder = BPDecoder::new(channel, parity_check, 10);
     ///
     /// // Should be able to decode this message to the 1 codeword.
     /// let easy_message = vec![GF2::B0, GF2::B1, GF2::B1, GF2::B1];
@@ -267,11 +267,11 @@ impl DecodingResult for BPResult {
 /// let channel = channel::BinarySymmetricChannel::new(0.2);
 /// let max_iters = 20; 
 /// let builder = BPDecoderBuilder::new(channel, max_iters);
-/// let checks = ParityCheckMatrix::(vec![vec![0, 1], vec![1, 2]], 3);
+/// let checks = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2]], 3);
 /// let decoder = builder.build_from(checks);
 ///
 /// let other_checks = ParityCheckMatrix::new(vec![vec![0, 1], vec![0, 2]], 3);
-/// let other_decoder = builder.build_from(checks);
+/// let other_decoder = builder.build_from(other_checks);
 /// ```
 pub struct BPDecoderBuilder<C> 
     where C: BinaryChannel

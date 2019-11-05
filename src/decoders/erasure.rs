@@ -10,10 +10,10 @@ use rand::{thread_rng, Rng};
 ///
 /// ```
 /// # use believer::*;
-/// let checks = ParityCheckMatrix::(vec![vec![0, 1], vec![1, 2]], 3);
+/// let checks = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2]], 3);
 /// let erasure_prob = 0.25;
 /// let decoder = ErasureDecoder::new(checks, erasure_prob);
-/// decoder.decode(decoder.random_error());
+/// decoder.decode(&decoder.random_error());
 /// ```
 pub struct ErasureDecoder {
     checks: ParityCheckMatrix,
@@ -81,11 +81,11 @@ impl Decoder for ErasureDecoder {
 /// # use believer::*;
 /// let erasure_prob = 0.25;
 /// let builder = ErasureDecoderBuilder::new(erasure_prob);
-/// let checks = ParityCheckMatrix::(vec![vec![0, 1], vec![1, 2]], 3);
+/// let checks = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2]], 3);
 /// let decoder = builder.build_from(checks);
 ///
 /// let other_checks = ParityCheckMatrix::new(vec![vec![0, 1], vec![0, 2]], 3);
-/// let other_decoder = builder.build_from(checks);
+/// let other_decoder = builder.build_from(other_checks);
 /// ```
 pub struct ErasureDecoderBuilder {
     erasure_prob: f64,

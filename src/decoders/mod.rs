@@ -54,10 +54,10 @@ pub trait DecoderBuilder {
 }
 
 pub mod belief_propagation;
-pub use belief_propagation::{BPDecoder, BPResult};
+pub use belief_propagation::*;
 
 pub mod erasure;
-pub use erasure::{ErasureDecoder, ErasureDecoderBuilder, ErasureResult};
+pub use erasure::*;
 
 pub mod quantum_erasure;
 pub use quantum_erasure::{QuantumErasureDecoder, QuantumErasureDecoderBuilder};
