@@ -1,3 +1,4 @@
+//! Implementation of the Paulis operator.
 use std::ops::Mul;
 
 /// The Pauli operators.
