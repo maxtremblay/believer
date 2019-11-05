@@ -22,7 +22,7 @@ use rand::{thread_rng, Rng};
 ///     .len();
 /// println!("{}", number_of_one); // Should be around 200.
 /// ```
-pub trait BinaryChannel: Sync {
+pub trait BinaryChannel: Sync + Send {
     /// For a given `output`, compute log(p(output|input = 1) / p(output|input = 0)).
     ///
     /// # Example
@@ -62,6 +62,7 @@ pub trait BinaryChannel: Sync {
 /// A binary symmetric channel caracterize by its error probability `prob`.
 /// That is, every time an input is send throught the channel, it is
 /// flipped with probability `prob`.
+#[derive(Clone)]
 pub struct BinarySymmetricChannel {
     prob: f64,
     log_likelyhood: f64,
