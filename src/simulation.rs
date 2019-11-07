@@ -8,16 +8,15 @@ pub struct Simulator<D: Decoder> {
 }
 
 impl<D: Decoder> Simulator<D> {
-    fn new(decoder: D) -> Self {
+    pub fn new(decoder: D) -> Self {
         Self { decoder }
     }
 
-    fn simulate_n_iterations(&self, n_iterations: usize) -> SimulationResult {
-        let decoder = self.decoder();
+    pub fn simulate_n_iterations(&self, n_iterations: usize) -> SimulationResult {
         let successes: usize = (0..n_iterations)
             .map(|_| {
-                let error = decoder.random_error();
-                decoder.decode(&error)
+                let error = self.decoder.random_error();
+                self.decoder.decode(&error)
             })
             .filter(|decoding| decoding.succeed())
             .count();
@@ -28,7 +27,7 @@ impl<D: Decoder> Simulator<D> {
         }
     }
 
-    fn simulate_until_events_are_found(&self, n_events: usize) -> SimulationResult {
+    pub fn simulate_until_events_are_found(&self, n_events: usize) -> SimulationResult {
         let (succ, fail) = (0..n_events)
             .into_par_iter()
             .map(|_| {
@@ -86,52 +85,3 @@ impl SimulationResult {
         }
     }
 }
-
-// pub struct CSSSimulationResult {
-//     successes: usize,
-//     x_failures: usize,
-//     z_failures: usize,
-//     x_and_z_failures: usize,
-// }
-
-// impl CSSSimulationResult {
-//     pub fn x_failures(&self) -> usize {
-//         self.x_failures
-//     }
-
-//     pub fn x_failure_rate(&self) -> f64 {
-//         self.x_failures() as f64 / self.total() as f64
-//     }
-
-//     pub fn z_failures(&self) -> usize {
-//         self.z_failures
-//     }
-
-//     pub fn z_failure_rate(&self) -> f64 {
-//         self.z_failures() as f64 / self.total() as f64
-//     }
-
-//     pub fn x_and_z_failures(&self) -> usize {
-//         self.x_and_z_failures
-//     }
-
-//     pub fn x_and_z_failure_rate(&self) -> f64 {
-//         self.x_and_z_failures() as f64 / self.total() as f64
-//     }
-
-//     pub fn total_failures(&self) -> usize {
-//         self.x_failures + self.z_failures + self.x_and_z_failures
-//     }
-
-//     pub fn total_failure_rate(&self) -> f64 {
-//         self.total_failures() as f64 / self.total() as f64
-//     }
-
-//     pub fn successes(&self) -> usize {
-//         self.successes
-//     }
-
-//     pub fn total(&self) -> usize {
-//         self.total_failures() + self.successes()
-//     }
-// }
