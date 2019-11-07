@@ -37,3 +37,6 @@ pub use random_check_generator::*;
 
 pub mod regular_ldpc;
 pub use regular_ldpc::*;
+
+pub mod increasing_range_code;
+pub use increasing_range_code::*;
