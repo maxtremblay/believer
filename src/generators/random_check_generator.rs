@@ -214,18 +214,6 @@ mod test {
 
     #[test]
     fn generate_bit_according_to_distribution() {
-        let mut generator = RandomCheckGenerator::new(vec![3; 5], 0);
-        generator.with_distribution(&[0.25, 0.25, 0.0, 0.25, 0.25]);
-
-        // Generate all degree 2 checks from the given distribution
-        for i in 0..6 {
-            println!("-- {} --", i);
-            let x = generator.generate(2);
-            println!("{:?}", x);
-            assert_eq!(x.is_some(), true);
-        }
-        assert_eq!(generator.generate(2), None);
-
         let mut generator = RandomCheckGenerator::new(vec![2; 5], 0);
         generator
             .with_distribution(&[0.25, 0.25, 0.0, 0.25, 0.25])
