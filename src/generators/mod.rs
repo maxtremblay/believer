@@ -1,4 +1,3 @@
-use crate::ClassicalSimulator;
 use crate::ErasureDecoder;
 use crate::ParityCheckMatrix;
 use crate::SimulationResult;
@@ -22,7 +21,7 @@ pub trait CodeGenerator {
         for _ in 0..n_codes {
             let code = self.generate();
             let decoder = ErasureDecoder::new(code.clone(), erasure_prob);
-            let simulator = ClassicalSimulator::new(decoder);
+            let simulator = Simulator::new(decoder);
             let result = simulator.simulate_until_events_are_found(n_failures_per_code);
             if result.failure_rate() < best_performance.failure_rate() {
                 best_performance = result;

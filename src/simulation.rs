@@ -3,13 +3,14 @@
 use crate::{Decoder, DecodingResult};
 use rayon::prelude::*;
 
-pub trait Simulator<D>
-where
-    D: Decoder,
-{
-    fn new(decoder: D) -> Self;
+pub struct Simulator<D: Decoder> {
+    decoder: D
+}
 
-    fn decoder(&self) -> &D;
+impl<D: Decoder> Simulator<D> {
+    fn new(decoder: D) -> Self {
+        Self { decoder }
+    }
 
     fn simulate_n_iterations(&self, n_iterations: usize) -> SimulationResult {
         let decoder = self.decoder();
@@ -28,15 +29,14 @@ where
     }
 
     fn simulate_until_events_are_found(&self, n_events: usize) -> SimulationResult {
-        let decoder = self.decoder();
         let (succ, fail) = (0..n_events)
             .into_par_iter()
             .map(|_| {
                 let mut successes = 0;
                 let mut failures = 0;
                 while successes == 0 || failures == 0 {
-                    let error = decoder.random_error();
-                    if decoder.decode(&error).succeed() {
+                    let error = self.decoder.random_error();
+                    if self.decoder.decode(&error).succeed() {
                         successes += 1;
                     } else {
                         failures += 1;
@@ -50,46 +50,6 @@ where
             successes: succ,
             failures: fail,
         }
-    }
-}
-
-pub struct CSSSimulator<D>
-where
-    D: Decoder,
-{
-    decoder: D,
-}
-
-impl<D> Simulator<D> for CSSSimulator<D>
-where
-    D: Decoder,
-{
-    fn new(decoder: D) -> Self {
-        Self { decoder }
-    }
-
-    fn decoder(&self) -> &D {
-        &self.decoder
-    }
-}
-
-pub struct ClassicalSimulator<D>
-where
-    D: Decoder,
-{
-    decoder: D,
-}
-
-impl<D> Simulator<D> for ClassicalSimulator<D>
-where
-    D: Decoder,
-{
-    fn new(decoder: D) -> Self {
-        Self { decoder }
-    }
-
-    fn decoder(&self) -> &D {
-        &self.decoder
     }
 }
 
@@ -127,51 +87,51 @@ impl SimulationResult {
     }
 }
 
-pub struct CSSSimulationResult {
-    successes: usize,
-    x_failures: usize,
-    z_failures: usize,
-    x_and_z_failures: usize,
-}
+// pub struct CSSSimulationResult {
+//     successes: usize,
+//     x_failures: usize,
+//     z_failures: usize,
+//     x_and_z_failures: usize,
+// }
 
-impl CSSSimulationResult {
-    pub fn x_failures(&self) -> usize {
-        self.x_failures
-    }
+// impl CSSSimulationResult {
+//     pub fn x_failures(&self) -> usize {
+//         self.x_failures
+//     }
 
-    pub fn x_failure_rate(&self) -> f64 {
-        self.x_failures() as f64 / self.total() as f64
-    }
+//     pub fn x_failure_rate(&self) -> f64 {
+//         self.x_failures() as f64 / self.total() as f64
+//     }
 
-    pub fn z_failures(&self) -> usize {
-        self.z_failures
-    }
+//     pub fn z_failures(&self) -> usize {
+//         self.z_failures
+//     }
 
-    pub fn z_failure_rate(&self) -> f64 {
-        self.z_failures() as f64 / self.total() as f64
-    }
+//     pub fn z_failure_rate(&self) -> f64 {
+//         self.z_failures() as f64 / self.total() as f64
+//     }
 
-    pub fn x_and_z_failures(&self) -> usize {
-        self.x_and_z_failures
-    }
+//     pub fn x_and_z_failures(&self) -> usize {
+//         self.x_and_z_failures
+//     }
 
-    pub fn x_and_z_failure_rate(&self) -> f64 {
-        self.x_and_z_failures() as f64 / self.total() as f64
-    }
+//     pub fn x_and_z_failure_rate(&self) -> f64 {
+//         self.x_and_z_failures() as f64 / self.total() as f64
+//     }
 
-    pub fn total_failures(&self) -> usize {
-        self.x_failures + self.z_failures + self.x_and_z_failures
-    }
+//     pub fn total_failures(&self) -> usize {
+//         self.x_failures + self.z_failures + self.x_and_z_failures
+//     }
 
-    pub fn total_failure_rate(&self) -> f64 {
-        self.total_failures() as f64 / self.total() as f64
-    }
+//     pub fn total_failure_rate(&self) -> f64 {
+//         self.total_failures() as f64 / self.total() as f64
+//     }
 
-    pub fn successes(&self) -> usize {
-        self.successes
-    }
+//     pub fn successes(&self) -> usize {
+//         self.successes
+//     }
 
-    pub fn total(&self) -> usize {
-        self.total_failures() + self.successes()
-    }
-}
+//     pub fn total(&self) -> usize {
+//         self.total_failures() + self.successes()
+//     }
+// }
