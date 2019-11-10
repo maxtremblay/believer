@@ -1,23 +1,60 @@
 use rand::distributions::WeightedIndex;
 use rand::Rng;
+use std::collections::{BTreeMap, BTreeSet};
 
 /// A `RandomCheckGenerator` helps generating checks for a code while respecting some global
 /// constraints.
 ///
-/// Constraints are bit and check degrees and minimal girth.
+/// Constraints are bit and check degrees and minimal girth. A `RandomCheckGenerator` is consumed
+/// while generating checks and need to be reset before being use to generate checks for a other
+/// code.
 pub struct RandomCheckGenerator {
     max_bit_degrees: Vec<usize>,
     bit_degrees: Vec<usize>,
-    adjacencies: Vec<Vec<usize>>,
-    ajdacency_depth: usize,
+    adjacencies: Vec<BTreeSet<usize>>,
+    adjacency_depth: usize,
     active_bits: Vec<usize>,
     distribution: Vec<f64>,
 }
 
 impl RandomCheckGenerator {
-    pub fn generate<R: Rng + ?Sized>(&mut self, check_degree: usize, rng: &mut R) -> Option<Vec<usize>> {
+    // **************
+    // Public methods
+    // **************
+
+    pub fn adjacent_to(&self, bit: usize) -> Vec<usize> {
+        if bit >= self.n_bits() {
+            Vec::new()
+        } else if self.adjacency_depth == 0 {
+            vec![bit]
+        } else {
+            let mut adjacents = BTreeMap::new();
+            self.adjacent_to_recursion(bit, self.adjacency_depth, &mut adjacents);
+            adjacents.keys().cloned().collect()
+        }
+    }
+
+    fn adjacent_to_recursion(&self, bit: usize, depth: usize, adjacents: &mut BTreeMap<usize, usize>) {
+        adjacents.insert(bit, depth);
+        if depth > 0 {
+            self.adjacencies[bit]
+                .iter()
+                .for_each(|b| {
+                    if adjacents.get(&b).map(|d| *d < depth).unwrap_or(true) {
+                        self.adjacent_to_recursion(*b, depth - 1, adjacents);
+                    }
+                })
+        }
+    }
+
+    /// Generates a random check of degree `check_degree` using the random number generator `rng`.
+    pub fn generate<R: Rng + ?Sized>(
+        &mut self,
+        check_degree: usize,
+        rng: &mut R,
+    ) -> Option<Vec<usize>> {
         let mut check = Vec::with_capacity(check_degree);
-        for _ in 0..check_degree {
+        for _ in 0..check_degree { 
             self.add_random_bit_to_check(&mut check, rng);
         }
         if check.len() == check_degree {
@@ -30,49 +67,8 @@ impl RandomCheckGenerator {
         }
     }
 
-    fn add_random_bit_to_check<R: Rng + ?Sized>(&self, check: &mut Vec<usize>, rng: &mut R) {
-        let availables: Vec<usize> = self
-            .active_bits
-            .iter()
-            .filter(|bit| self.bit_degrees[**bit] < self.max_bit_degrees[**bit])
-            .filter(|bit| !check.contains(bit))
-            .filter(|bit| check.iter().all(|b| self.are_not_adjacent(b, bit)))
-            .map(|bit| *bit)
-            .collect();
-        let probs: Vec<f64> = availables
-            .iter()
-            .map(|bit| self.distribution[*bit])
-            .collect();
-        if probs.len() > 0 && probs.iter().sum::<f64>() > 0.0 {
-            let distribution = WeightedIndex::new(Self::normalize(&probs)).unwrap();
-            check.push(availables[rng.sample(distribution)]);
-        }
-    }
-
-    fn are_not_adjacent(&self, bit_0: &usize, bit_1: &usize) -> bool {
-        !self.adjacencies[*bit_0].contains(bit_1) && !self.adjacencies[*bit_1].contains(bit_0)
-    }
-
-    fn update_adjacency(&mut self, check: &[usize]) {
-        check.iter().for_each(|bit_0| {
-            check.iter().for_each(|bit_1| {
-                let adjacent_bits = self.adjacent_bits(bit_0, self.ajdacency_depth);
-                self.adjacencies[*bit_1].extend_from_slice(&adjacent_bits);
-            });
-        });
-    }
-
-    fn adjacent_bits(&self, bit: &usize, depth: usize) -> Vec<usize> {
-        if depth == 0 {
-            Vec::new()
-        } else if depth == 1 {
-            vec![*bit]
-        } else {
-            self.adjacencies[*bit]
-                .iter()
-                .flat_map(|b| self.adjacent_bits(b, depth - 1))
-                .collect()
-        }
+    pub fn n_bits(&self) -> usize {
+        self.bit_degrees.len()
     }
 
     pub fn new(max_bit_degrees: Vec<usize>, minimal_girth: usize) -> Self {
@@ -80,12 +76,8 @@ impl RandomCheckGenerator {
         Self {
             max_bit_degrees,
             bit_degrees: vec![0; n_bits],
-            ajdacency_depth: if minimal_girth > 4 {
-                (minimal_girth - 4) / 2
-            } else {
-                0
-            },
-            adjacencies: (0..n_bits).map(|b| vec![b]).collect(),
+            adjacency_depth: minimal_girth  / 2,
+            adjacencies: (0..n_bits).map(|b| [b].iter().cloned().collect()).collect(),
             active_bits: (0..n_bits).collect(),
             distribution: vec![1.0 / n_bits as f64; n_bits],
         }
@@ -103,11 +95,16 @@ impl RandomCheckGenerator {
         self
     }
 
-    pub fn with_distribution(&mut self, probs: &[f64]) -> &mut Self {
+    pub fn reset(&mut self) {
+        self.bit_degrees = vec![0; self.n_bits()];
+        self.adjacencies = (0..self.n_bits()).map(|b| [b].iter().cloned().collect()).collect();
+    }
+
+    pub fn with_distribution(&mut self, probs: Vec<f64>) -> &mut Self {
         if probs.len() != self.n_bits() {
             panic!("wrong number of probabilities");
         }
-        self.distribution = Self::normalize(probs);
+        self.distribution = probs;
         self
     }
 
@@ -125,25 +122,83 @@ impl RandomCheckGenerator {
         self
     }
 
-    pub fn n_bits(&self) -> usize {
-        self.bit_degrees.len()
+    // ***************
+    // Private methods
+    // ***************
+
+    fn add_random_bit_to_check<R: Rng + ?Sized>(&self, check: &mut Vec<usize>, rng: &mut R) {
+        let availables: Vec<usize> = self
+            .active_bits
+            .iter()
+            .filter(|bit| self.bit_degrees[**bit] < self.max_bit_degrees[**bit])
+            .filter(|bit| !check.contains(bit))
+            .filter(|bit| check.iter().all(|b| self.are_not_adjacent(b, bit)))
+            .map(|bit| *bit)
+            .collect();
+        let probs: Vec<f64> = availables
+            .iter()
+            .map(|bit| self.distribution[*bit])
+            .collect();
+        if probs.len() > 0 && probs.iter().sum::<f64>() > 0.0 {
+            let distribution = WeightedIndex::new(&probs).unwrap();
+            check.push(availables[rng.sample(distribution)]);
+        }
     }
 
-    fn normalize(probs: &[f64]) -> Vec<f64> {
-        let sum: f64 = probs.iter().sum();
-        if sum == 0.0 {
-            probs.to_vec()
-        } else {
-            probs.iter().map(|p| p / sum).collect()
-        }
+    fn are_not_adjacent(&self, bit_0: &usize, bit_1: &usize) -> bool {
+        !self.adjacent_to(*bit_0).contains(bit_1)
+    }
+
+    fn update_adjacency(&mut self, check: &[usize]) {
+        check.iter().for_each(|bit_0| {
+            check.iter().for_each(|bit_1| { 
+                self.adjacencies[*bit_1].insert(*bit_0); 
+            });
+        });
     }
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
-    use rand_chacha::ChaCha8Rng;
     use rand::SeedableRng;
+    use rand_chacha::ChaCha8Rng;
+
+    #[test]
+    fn test_adjacencies() {
+        let mut rng = ChaCha8Rng::seed_from_u64(10);
+        
+        // A 15 bit check generator with minimal girth 6;
+        let mut generator = RandomCheckGenerator::new(vec![3; 15], 6);
+        
+        // Each bit is adjacent to itself.
+        (0..15).for_each(|b| assert_eq!(generator.adjacent_to(b), vec![b]));
+
+        // Generate some random weight 3 checks.
+        assert_eq!(generator.generate(3, &mut rng), Some(vec![0, 8, 9])); 
+        assert_eq!(generator.generate(3, &mut rng), Some(vec![2, 10, 12]));
+        assert_eq!(generator.generate(3, &mut rng), Some(vec![1, 4, 12]));
+        assert_eq!(generator.generate(3, &mut rng), Some(vec![0, 1, 11]));
+        assert_eq!(generator.generate(3, &mut rng), Some(vec![0, 5, 6]));
+
+
+        // Check adjacencies
+        assert_eq!(generator.adjacent_to(0), vec![0, 1, 2, 4, 5, 6, 8, 9, 10, 11, 12]);
+        assert_eq!(generator.adjacent_to(1), vec![0, 1, 2, 4, 5, 6, 8, 9, 10, 11, 12]);
+        assert_eq!(generator.adjacent_to(2), vec![0, 1, 2, 4, 10, 11, 12]);
+        assert_eq!(generator.adjacent_to(3), vec![3]);
+        assert_eq!(generator.adjacent_to(4), vec![0, 1, 2, 4, 5, 6, 8, 9, 10, 11, 12]);
+        assert_eq!(generator.adjacent_to(5), vec![0, 1, 4, 5, 6, 8, 9, 11, 12]);
+        assert_eq!(generator.adjacent_to(6), vec![0, 1, 4, 5, 6, 8, 9, 11, 12]);
+        assert_eq!(generator.adjacent_to(7), vec![7]);
+        assert_eq!(generator.adjacent_to(8), vec![0, 1, 4, 5, 6, 8, 9, 11, 12]);
+        assert_eq!(generator.adjacent_to(9), vec![0, 1, 4, 5, 6, 8, 9, 11, 12]);
+        assert_eq!(generator.adjacent_to(10), vec![0, 1, 2, 4, 10, 11, 12]);
+        assert_eq!(generator.adjacent_to(11), vec![0, 1, 2, 4, 5, 6, 8, 9, 10, 11, 12]);
+        assert_eq!(generator.adjacent_to(12), vec![0, 1, 2, 4, 5, 6, 8, 9, 10, 11, 12]);
+        assert_eq!(generator.adjacent_to(13), vec![13]);
+        assert_eq!(generator.adjacent_to(14), vec![14]);
+    }
 
     #[test]
     fn doesnt_include_same_bit_twice() {
@@ -167,11 +222,14 @@ mod test {
         let first_check = generator.without(&[2]).generate(2, &mut rng);
         assert_eq!(first_check, Some(vec![0, 1]));
 
-        let second_check = generator.over_all_bits().without(&[0]).generate(2, &mut rng);
+        let second_check = generator
+            .over_all_bits()
+            .without(&[0])
+            .generate(2, &mut rng);
         assert_eq!(second_check, Some(vec![1, 2]));
 
-        // We already have checks [0,1] and [1, 2]. Degree of bit 1 is 2 and it can't be include in
-        // another check.
+        // We already have checks [0,1] and [1, 2]. Degree of bit 1 is 2 and it can't
+        // be included in another check.
 
         let third_check = generator.over_all_bits().generate(3, &mut rng);
         assert_eq!(third_check, None);
@@ -226,7 +284,7 @@ mod test {
 
         let mut generator = RandomCheckGenerator::new(vec![2; 5], 0);
         generator
-            .with_distribution(&[0.25, 0.25, 0.0, 0.25, 0.25])
+            .with_distribution(vec![0.25, 0.25, 0.0, 0.25, 0.25])
             .over_bits(vec![0, 1, 2]);
 
         // Can't generate 3 bits from this distribution over the first 3.
