@@ -1,6 +1,7 @@
 use super::CodeGenerator;
 use super::RandomCheckGenerator;
 use crate::ParityCheckMatrix;
+use rand::Rng;
 
 pub struct RegularLDPCCodeGenerator {
     bit_degree: usize,
@@ -10,12 +11,12 @@ pub struct RegularLDPCCodeGenerator {
 }
 
 impl CodeGenerator for RegularLDPCCodeGenerator {
-    fn generate(&self) -> ParityCheckMatrix {
+    fn generate<R: Rng +?Sized>(&self, rng: &mut R) -> ParityCheckMatrix {
         let mut check_generator =
             RandomCheckGenerator::new(vec![self.bit_degree; self.n_bits()], self.minimal_girth);
         let mut checks = Vec::with_capacity(self.n_checks());
         for _ in 0..self.n_checks() {
-            if let Some(check) = check_generator.generate(self.check_degree) {
+            if let Some(check) = check_generator.generate(self.check_degree, rng) {
                 checks.push(check);
             }
         }
