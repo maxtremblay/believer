@@ -34,18 +34,18 @@ impl Pauli {
     }
 
     /// Returns `+1` if `self` and `other` are commuting and `-1` otherwise.
-    /// 
-    /// # Example 
-    /// 
+    ///
+    /// # Example
+    ///
     /// ```
     /// # use believer::*;
     /// let paulis = vec![Pauli::I, Pauli::X, Pauli::Y, Pauli::Z];
     /// // Every pauli commute with identity
     /// paulis.iter().for_each(|p| assert_eq!(p.commutator_with(Pauli::I), 1));
-    /// 
+    ///
     /// // Every pauli commute with itself.
     /// paulis.iter().for_each(|p| assert_eq!(p.commutator_with(*p), 1));
-    /// 
+    ///
     /// // X, Y and Z anticommute
     /// [Pauli::Y, Pauli::Z].iter().for_each(|p| assert_eq!(p.commutator_with(Pauli::X), -1));
     /// assert_eq!(Pauli::Y.commutator_with(Pauli::Z), -1);
@@ -54,7 +54,13 @@ impl Pauli {
         match (self, other) {
             (Self::I, _) => 1,
             (_, Self::I) => 1,
-            (a, b) => if a == b { 1 } else { -1 }
+            (a, b) => {
+                if a == b {
+                    1
+                } else {
+                    -1
+                }
+            }
         }
     }
 }

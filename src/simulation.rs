@@ -4,7 +4,7 @@ use crate::{Decoder, DecodingResult};
 use rayon::prelude::*;
 
 pub struct Simulator<D: Decoder> {
-    decoder: D
+    decoder: D,
 }
 
 impl<D: Decoder> Simulator<D> {
@@ -34,6 +34,9 @@ impl<D: Decoder> Simulator<D> {
                 let mut successes = 0;
                 let mut failures = 0;
                 while successes == 0 || failures == 0 {
+                    // if (successes + failures) % 5000 == 0 && successes + failures > 0{
+                    //     println!("S: {} // F: {}", successes, failures);    
+                    // }
                     let error = self.decoder.random_error();
                     if self.decoder.decode(&error).succeed() {
                         successes += 1;

@@ -4,9 +4,9 @@
 //! and Algorithms (Chapter 15), Todd K. Moon, 2005, Wiley".
 
 use super::{Decoder, DecoderBuilder, DecodingResult};
-use crate::ParityCheckMatrix;
 use crate::channel::BinaryChannel;
 use crate::sparse_matrix::{SparseMatrix, Transposer};
+use crate::ParityCheckMatrix;
 use crate::GF2;
 
 /// A `BPDecoder` can decode a message received from a given `channel` using a given
@@ -265,7 +265,7 @@ impl DecodingResult for BPResult {
 /// ```
 /// # use believer::*;
 /// let channel = channel::BinarySymmetricChannel::new(0.2);
-/// let max_iters = 20; 
+/// let max_iters = 20;
 /// let builder = BPDecoderBuilder::new(channel, max_iters);
 /// let checks = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2]], 3);
 /// let decoder = builder.build_from(checks);
@@ -273,8 +273,9 @@ impl DecodingResult for BPResult {
 /// let other_checks = ParityCheckMatrix::new(vec![vec![0, 1], vec![0, 2]], 3);
 /// let other_decoder = builder.build_from(other_checks);
 /// ```
-pub struct BPDecoderBuilder<C> 
-    where C: BinaryChannel
+pub struct BPDecoderBuilder<C>
+where
+    C: BinaryChannel,
 {
     channel: C,
     max_iters: usize,
@@ -344,7 +345,7 @@ impl<'a, C: BinaryChannel> Likelyhoods<'a, C> {
             })
             .collect();
 
-        self.extrinsec = 
+        self.extrinsec =
             SparseMatrix::from_parity_check(&self.decoder.parity_check, updated_values);
     }
 
@@ -386,19 +387,15 @@ mod test {
         let max_iters = 10;
         let builder = BPDecoderBuilder::new(channel, max_iters);
         let checks = ParityCheckMatrix::new(
-            vec![
-                vec![0, 1, 2, 4],
-                vec![0, 1, 3, 5],
-                vec![0, 2, 3, 6],
-            ],
-            7
+            vec![vec![0, 1, 2, 4], vec![0, 1, 3, 5], vec![0, 2, 3, 6]],
+            7,
         );
         let decoder = builder.build_from(checks);
 
         // Should decode no error
         let decoded = decoder.decode(&vec![GF2::B0; 7]);
         assert_eq!(decoded, BPResult::Codeword(vec![GF2::B0; 7]));
-        
+
         // Should decode 1 error
         for i in 0..7 {
             let mut message = vec![GF2::B0; 7];
@@ -419,7 +416,15 @@ mod test {
         let decoded = decoder.decode(&message);
         assert_eq!(
             decoded,
-            BPResult::Codeword(vec![GF2::B1, GF2::B1, GF2::B0, GF2::B0, GF2::B0, GF2::B0, GF2::B1])
+            BPResult::Codeword(vec![
+                GF2::B1,
+                GF2::B1,
+                GF2::B0,
+                GF2::B0,
+                GF2::B0,
+                GF2::B0,
+                GF2::B1
+            ])
         );
     }
 

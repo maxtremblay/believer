@@ -123,7 +123,7 @@ mod test {
                 vec![(Z, 0), (Z, 1), (Z, 3), (Z, 5)],
                 vec![(Z, 0), (Z, 2), (Z, 3), (Z, 6)],
             ],
-            7
+            7,
         );
 
         let decoder = QuantumErasureDecoder::new(stabilizers, 0.25);
@@ -166,7 +166,7 @@ mod test {
                 vec![(X, 0), (X, 1), (X, 2), (X, 3), (X, 4), (X, 5)],
                 vec![(X, 3), (X, 4), (X, 5), (X, 6), (X, 7), (X, 8)],
             ],
-            9
+            9,
         );
 
         let decoder = builder.build_from(stabilizers);
@@ -191,9 +191,8 @@ mod test {
                 vec![I, X, Z, Z, X],
                 vec![X, I, X, Z, Z],
                 vec![Z, X, I, X, Z],
-
             ],
-            5
+            5,
         );
 
         let decoder = QuantumErasureDecoder::new(stabilizers, 0.25);
@@ -207,9 +206,6 @@ mod test {
                     assert_eq!(decoder.decode(&vec![i, j, k]), ErasureResult::Failure);
                 }
             }
-
         }
-
-
     }
 }

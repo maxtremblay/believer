@@ -30,12 +30,10 @@ impl<'a> SparseMatrix<'a> {
 
     pub(crate) fn row_slice(&self, row: usize) -> Option<RowSlice> {
         self.row_ranges.get(row).and_then(|&row_start| {
-            self.row_ranges.get(row + 1).map(|&row_end| {
-                RowSlice {
-                    values: &self.values[row_start..row_end],
-                    positions: &self.column_indices[row_start..row_end],
-                    active: 0,
-                }
+            self.row_ranges.get(row + 1).map(|&row_end| RowSlice {
+                values: &self.values[row_start..row_end],
+                positions: &self.column_indices[row_start..row_end],
+                active: 0,
             })
         })
     }
