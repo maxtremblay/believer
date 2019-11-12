@@ -20,6 +20,101 @@ pub struct ParityCheckMatrix {
 }
 
 impl ParityCheckMatrix {
+    // ************
+    // Construction
+    // ************
+
+    /// Creates a new `ParityCheckMatrix` with `n_bits` and no checks.
+    /// 
+    /// # Example 
+    /// 
+    /// ```
+    /// # use believer::*;
+    /// let matrix = ParityCheckMatrix::with_n_bits(5);
+    /// assert_eq!(matrix.n_bits(), 5);
+    /// assert_eq!(matrix.n_checks(), 0);
+    /// ```
+    pub fn with_n_bits(n_bits: usize) -> Self {
+        Self {
+            check_ranges: vec![],
+            bit_indices: vec![],
+            n_bits
+        }
+    }
+
+    /// Set the checks of `self` consuming `checks`. 
+    /// 
+    /// # Panic 
+    /// 
+    /// Panics if some checks are out of bounds. That is, if they are connected to a bit that is
+    /// greater or equal than `self.n_bits()`.
+    /// 
+    /// # Example 
+    /// 
+    /// ```
+    /// # use believer::*;
+    /// let checks = vec![vec![0, 1], vec![1, 2]];
+    /// let mut matrix = ParityCheckMatrix::with_n_bits(3).set_checks(checks);
+    /// assert_eq!(matrix.n_checks(), 2);
+    /// ```
+    pub fn set_checks(mut self, checks: Vec<Vec<usize>>) -> Self {
+        if self.some_checks_are_out_of_bounds(&checks) {
+            panic!("some checks are out of bounds");
+        }
+        self.init_bit_indices(&checks);
+        self.init_check_ranges(&checks);
+        self.fill_with(checks);
+        self
+    }
+
+    // Verify if checks are out of bounds.
+
+    fn some_checks_are_out_of_bounds(&self, checks: &[Vec<usize>]) -> bool {
+        checks.iter().any(|check| self.is_out_of_bounds(check))
+    }
+
+    fn is_out_of_bounds(&self, check: &[usize]) -> bool {
+        check.iter().max().map(|max| *max >= self.n_bits).unwrap_or(true)
+    }
+
+    // Initialization
+
+    fn init_bit_indices(&mut self, checks: &[Vec<usize>]) {
+        let capacity = checks.iter().fold(0, |acc, check| acc + check.len());
+        self.bit_indices = Vec::with_capacity(capacity)
+    }
+
+    fn init_check_ranges(&mut self, checks: &[Vec<usize>]) {
+        self.check_ranges = Vec::with_capacity(checks.len() + 1);
+        self.check_ranges.push(0);
+    }
+
+    // Fill the parity check matrix with checks.
+
+    fn fill_with(&mut self, checks: Vec<Vec<usize>>) {
+        checks.into_iter().for_each(|check| {
+            self.add_check(check);
+        })
+    }
+
+    fn add_check(&mut self, check: Vec<usize>) {
+        self.add_check_range(&check);
+        self.add_bit_indices(check);
+        
+    }
+
+    fn add_check_range(&mut self, check: &[usize]) {
+        let n_elements_before = self.bit_indices.len();
+        self.check_ranges.push(n_elements_before + check.len());
+    }
+
+    fn add_bit_indices(&mut self, mut check: Vec<usize>) {
+        check.sort();
+        self.bit_indices.append(&mut check);
+    }
+
+
+
     // *
     // Public methods
     // *
@@ -269,7 +364,11 @@ impl ParityCheckMatrix {
 
     /// Returns the number of checks in `self`.
     pub fn n_checks(&self) -> usize {
-        self.check_ranges().len() - 1
+        if self.check_ranges().len() > 0 {
+            self.check_ranges().len() - 1
+        } else {
+            0
+        }
     }
 
     /// Creates a new `ParityCheckMatrix` from a list of `checks` where
@@ -1102,6 +1201,14 @@ fn add_checks(check_0: &[usize], check_1: &[usize]) -> Vec<usize> {
 #[cfg(test)]
 mod test {
     use super::*;
+
+    #[test]
+    fn construction() {
+        let checks = vec![vec![0, 1], vec![1, 2]];
+        let matrix = ParityCheckMatrix::with_n_bits(3).set_checks(checks);
+        assert_eq!(matrix.n_bits(), 3);
+        assert_eq!(matrix.n_checks(), 2);
+    }
 
     #[test]
     fn checks_iterator() {
