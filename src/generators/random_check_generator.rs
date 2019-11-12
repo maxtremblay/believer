@@ -22,6 +22,10 @@ impl RandomCheckGenerator {
     // Public methods
     // **************
 
+    /// Returns the list of bits adjacent to `bit` given the minimal girth of the generator. 
+    /// 
+    /// Two bits are adjacent if connecting them to the same check will create a cycle smaller than
+    /// the minimal girth.
     pub fn adjacent_to(&self, bit: usize) -> Vec<usize> {
         if bit >= self.n_bits() {
             Vec::new()
@@ -31,19 +35,6 @@ impl RandomCheckGenerator {
             let mut adjacents = BTreeMap::new();
             self.adjacent_to_recursion(bit, self.adjacency_depth, &mut adjacents);
             adjacents.keys().cloned().collect()
-        }
-    }
-
-    fn adjacent_to_recursion(&self, bit: usize, depth: usize, adjacents: &mut BTreeMap<usize, usize>) {
-        adjacents.insert(bit, depth);
-        if depth > 0 {
-            self.adjacencies[bit]
-                .iter()
-                .for_each(|b| {
-                    if adjacents.get(&b).map(|d| *d < depth).unwrap_or(true) {
-                        self.adjacent_to_recursion(*b, depth - 1, adjacents);
-                    }
-                })
         }
     }
 
@@ -131,9 +122,8 @@ impl RandomCheckGenerator {
             .active_bits
             .iter()
             .filter(|bit| self.bit_degrees[**bit] < self.max_bit_degrees[**bit])
-            .filter(|bit| !check.contains(bit))
             .filter(|bit| check.iter().all(|b| self.are_not_adjacent(b, bit)))
-            .map(|bit| *bit)
+            .cloned()
             .collect();
         let probs: Vec<f64> = availables
             .iter()
@@ -142,6 +132,21 @@ impl RandomCheckGenerator {
         if probs.len() > 0 && probs.iter().sum::<f64>() > 0.0 {
             let distribution = WeightedIndex::new(&probs).unwrap();
             check.push(availables[rng.sample(distribution)]);
+        }
+    }
+
+
+    // Helper function for `self.adjacent_to(...)`.
+    fn adjacent_to_recursion(&self, bit: usize, depth: usize, adjacents: &mut BTreeMap<usize, usize>) {
+        adjacents.insert(bit, depth);
+        if depth > 0 {
+            self.adjacencies[bit]
+                .iter()
+                .for_each(|b| {
+                    if adjacents.get(&b).map(|d| *d < depth).unwrap_or(true) {
+                        self.adjacent_to_recursion(*b, depth - 1, adjacents);
+                    }
+                })
         }
     }
 
