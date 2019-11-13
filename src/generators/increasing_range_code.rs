@@ -28,10 +28,10 @@ use rand::Rng;
 /// assert_eq!(code.n_checks(), 3);
 ///
 /// // Bit degrees are at most 3.
-/// code.bit_degrees().iter().for_each(|&d| assert_eq!(d <= 3, true));
+/// code.get_bit_degrees().iter().for_each(|&d| assert_eq!(d <= 3, true));
 ///
 /// // Check degrees are at most 4.
-/// code.check_degrees().iter().for_each(|&d| assert_eq!(d <= 4, true));
+/// code.get_check_degrees().iter().for_each(|&d| assert_eq!(d <= 4, true));
 /// ```
 pub struct IncreasingRangeCodeGenerator {
     initial_range: usize,
