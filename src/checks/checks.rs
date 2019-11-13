@@ -1,3 +1,19 @@
+//! A view over a check of a parity check matrix. 
+//! 
+//! # Example 
+//! 
+//! ```
+//! # use believer::*;
+//! let all_checks = vec![
+//!     vec![0, 1],
+//!     vec![0, 3],
+//!     vec![1, 2, 3],
+//! ];
+//! let matrix = ParityCheckMatrix::with_n_bits(4).with_checks(all_checks);
+//! 
+//! let second_check = matrix.check(2);
+//! ```
+
 use crate::GF2;
 
 /// A view over a check of a parity check matrix.
@@ -7,6 +23,7 @@ pub struct Check<'a> {
 }
 
 impl<'a> Check<'a> {
+    // Useful to create a check from a parity check matrix.
     pub(crate) fn from_slice(slice: &'a [usize]) -> Self {
         Self { bits: slice }
     }
@@ -46,10 +63,12 @@ impl<'a> Check<'a> {
         })
     }
 
+    /// Returns `true` if the syndrome of `message` is `GF2::B1`.
     pub fn has_non_zero_syndrome(&self, message: &[GF2]) -> bool {
         self.compute_syndrome(message) == GF2::B1
     }
 
+    /// Returns `true` if the syndrome of `message` is `GF2::B0`.
     pub fn has_zero_syndrome(&self, message: &[GF2]) -> bool {
         self.compute_syndrome(message) == GF2::B0
     }
@@ -71,7 +90,6 @@ impl<'a> Check<'a> {
     ///         vec![1, 2, 5],
     ///         vec![3],
     ///         vec![0, 4],
-    ///         vec![],
     ///     ],
     ///     6
     /// );
@@ -82,22 +100,63 @@ impl<'a> Check<'a> {
     /// assert_eq!(parity_check.check(3).unwrap().spread(), 5);
     /// ```
     pub fn spread(&self) -> usize {
-        self.min()
-            .and_then(|min| self.max().map(|max| max - min + 1))
-            .unwrap_or(0)
+        self.max() - self.min() + 1 // Well define (>= 0), because there is at least 2 bits.
     }
 
-    pub fn max(&self) -> Option<&usize> {
-        self.bits.last() // Check is always sorted
+    /// Returns the bit connected to `self` with maximal index.
+    /// 
+    /// # Example
+    ///
+    /// ```
+    /// # use believer::*;
+    /// let parity_check = ParityCheckMatrix::new(
+    ///     vec![
+    ///         vec![0, 1],
+    ///         vec![1, 2, 5],
+    ///         vec![3],
+    ///         vec![0, 4],
+    ///     ],
+    ///     6
+    /// );
+    ///
+    /// assert_eq!(parity_check.check(0).unwrap().max(), 1);
+    /// assert_eq!(parity_check.check(1).unwrap().max(), 5);
+    /// assert_eq!(parity_check.check(2).unwrap().max(), 3);
+    /// assert_eq!(parity_check.check(3).unwrap().max(), 4);
+    /// ```
+    pub fn max(&self) -> usize {
+        *self.bits.last().unwrap() // Check is always sorted and non empty.
     }
 
-    pub fn min(&self) -> Option<&usize> {
-        self.bits.first() // Check is always sorted
+    /// Returns the bit connected to `self` with minimal index if `self`
+    /// 
+    /// # Example
+    ///
+    /// ```
+    /// # use believer::*;
+    /// let parity_check = ParityCheckMatrix::new(
+    ///     vec![
+    ///         vec![0, 1],
+    ///         vec![1, 2, 5],
+    ///         vec![3],
+    ///         vec![0, 4],
+    ///     ],
+    ///     6
+    /// );
+    ///
+    /// assert_eq!(parity_check.check(0).unwrap().min(), 0);
+    /// assert_eq!(parity_check.check(1).unwrap().min(), 1);
+    /// assert_eq!(parity_check.check(2).unwrap().min(), 3);
+    /// assert_eq!(parity_check.check(3).unwrap().min(), 0);
+    /// ```
+    pub fn min(&self) -> usize {
+        *self.bits.first().unwrap() // Check is always sorted and non empty.
     }
 }
 
 
 impl<'a> AsRef<[usize]> for Check<'a> {
+    /// Returns the indices of the bits connected to `self` as a slice.
     fn as_ref(&self) -> &[usize] {
         self.bits
     } 
