@@ -60,7 +60,7 @@ impl GF4Stabilizers {
         x_checks: ParityCheckMatrix,
         z_checks: ParityCheckMatrix,
     ) -> Self {
-        if x_checks.n_bits() != z_checks.n_bits() {
+        if x_checks.get_n_bits() != z_checks.get_n_bits() {
             panic!("different number of bits in each parity check matrix")
         }
         Self { x_checks, z_checks }
@@ -86,11 +86,11 @@ impl GF4Stabilizers {
     }
 
     pub fn n_qubits(&self) -> usize {
-        self.x_checks().n_bits()
+        self.x_checks().get_n_bits()
     }
 
     pub fn n_stabilizers(&self) -> usize {
-        std::cmp::max(self.x_checks().n_checks(), self.z_checks().n_checks())
+        std::cmp::max(self.x_checks().get_n_checks(), self.z_checks().get_n_checks())
     }
 
     pub fn without(&self, qubits: &[usize]) -> Self {

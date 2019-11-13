@@ -86,8 +86,8 @@ pub(crate) struct Transposer {
 
 impl Transposer {
     pub(crate) fn new(parity_check: &ParityCheckMatrix) -> Self {
-        let mut indices = Vec::with_capacity(parity_check.n_bits());
-        let mut column_indices = Vec::with_capacity(parity_check.n_bits());
+        let mut indices = Vec::with_capacity(parity_check.get_n_bits());
+        let mut column_indices = Vec::with_capacity(parity_check.get_n_bits());
         let mut row_ranges = Vec::new();
         row_ranges.push(0);
 

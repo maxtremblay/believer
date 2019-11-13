@@ -38,7 +38,7 @@ impl ErasureDecoder {
 
     /// Returns the number of bit the decoder is acting on.
     pub fn n_bits(&self) -> usize {
-        self.checks.n_bits()
+        self.checks.get_n_bits()
     }
 }
 
@@ -63,7 +63,7 @@ impl Decoder for ErasureDecoder {
     // Erase random bits with given probability.
     fn random_error(&self) -> Vec<usize> {
         let mut rng = thread_rng();
-        (0..self.checks.n_bits())
+        (0..self.checks.get_n_bits())
             .filter(|_| rng.gen::<f64>() < self.erasure_prob)
             .collect()
     }

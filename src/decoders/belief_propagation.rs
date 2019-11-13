@@ -75,7 +75,7 @@ impl<C: BinaryChannel> BPDecoder<C> {
     /// assert_eq!(decoder.n_bits(), 5);
     /// ```
     pub fn n_bits(&self) -> usize {
-        self.parity_check.n_bits()
+        self.parity_check.get_n_bits()
     }
 
     /// Returns the number of checks in `self`.
@@ -99,7 +99,7 @@ impl<C: BinaryChannel> BPDecoder<C> {
     /// assert_eq!(decoder.n_checks(), 4);
     /// ```
     pub fn n_checks(&self) -> usize {
-        self.parity_check.n_checks()
+        self.parity_check.get_n_checks()
     }
 
     /// Creates a new decoder from references to a `channel` and a `parity_check` matrix.
