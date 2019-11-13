@@ -15,8 +15,8 @@ pub use gf4_stabilizers::*;
 pub mod generators;
 pub use generators::*;
 
-pub mod parity_check_matrix;
-pub use parity_check_matrix::*;
+pub mod checks;
+pub use checks::*;
 
 pub mod paulis;
 pub use paulis::*;
