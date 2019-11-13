@@ -100,7 +100,7 @@ impl<'a> Check<'a> {
     /// assert_eq!(parity_check.check(3).unwrap().spread(), 5);
     /// ```
     pub fn spread(&self) -> usize {
-        self.max() - self.min() + 1 // Well define (>= 0), because there is at least 2 bits.
+        self.max() - self.min() + 1 // Well define (>= 0), because max >= min.
     }
 
     /// Returns the bit connected to `self` with maximal index.
@@ -153,7 +153,6 @@ impl<'a> Check<'a> {
         *self.bits.first().unwrap() // Check is always sorted and non empty.
     }
 }
-
 
 impl<'a> AsRef<[usize]> for Check<'a> {
     /// Returns the indices of the bits connected to `self` as a slice.
