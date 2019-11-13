@@ -54,10 +54,10 @@ impl ParityCheckMatrix {
     /// ```
     /// # use believer::*;
     /// let checks = vec![vec![0, 1], vec![1, 2]];
-    /// let mut matrix = ParityCheckMatrix::with_n_bits(3).set_checks(checks);
+    /// let mut matrix = ParityCheckMatrix::with_n_bits(3).with_checks(checks);
     /// assert_eq!(matrix.n_checks(), 2);
     /// ```
-    pub fn set_checks(mut self, checks: Vec<Vec<usize>>) -> Self {
+    pub fn with_checks(mut self, checks: Vec<Vec<usize>>) -> Self {
         if self.some_checks_are_out_of_bounds(&checks) {
             panic!("some checks are out of bounds");
         }
@@ -67,8 +67,6 @@ impl ParityCheckMatrix {
         self
     }
 
-    // Verify if checks are out of bounds.
-
     fn some_checks_are_out_of_bounds(&self, checks: &[Vec<usize>]) -> bool {
         checks.iter().any(|check| self.is_out_of_bounds(check))
     }
@@ -76,8 +74,6 @@ impl ParityCheckMatrix {
     fn is_out_of_bounds(&self, check: &[usize]) -> bool {
         check.iter().max().map(|max| *max >= self.n_bits).unwrap_or(true)
     }
-
-    // Initialization
 
     fn init_bit_indices(&mut self, checks: &[Vec<usize>]) {
         let capacity = checks.iter().fold(0, |acc, check| acc + check.len());
@@ -88,8 +84,6 @@ impl ParityCheckMatrix {
         self.check_ranges = Vec::with_capacity(checks.len() + 1);
         self.check_ranges.push(0);
     }
-
-    // Fill the parity check matrix with checks.
 
     fn fill_with(&mut self, checks: Vec<Vec<usize>>) {
         checks.into_iter().for_each(|check| {
@@ -113,7 +107,22 @@ impl ParityCheckMatrix {
         self.bit_indices.append(&mut check);
     }
 
-
+    /// Creates a new `ParityCheckMatrix` from a list of `checks` where
+    /// each check is a list of the bits connected to that check and the
+    /// number of bits.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use::believer::ParityCheckMatrix;
+    /// // The parity check matrix of a 3 bits repetition code.
+    /// let checks = vec![vec![0, 1], vec![1, 2]];
+    /// let n_bits = 3;
+    /// let parity_check = ParityCheckMatrix::new(checks, n_bits);
+    /// ```
+    pub fn new(checks: Vec<Vec<usize>>, n_bits: usize) -> Self {
+        Self::with_n_bits(n_bits).with_checks(checks)
+    }
 
     // *
     // Public methods
@@ -371,42 +380,7 @@ impl ParityCheckMatrix {
         }
     }
 
-    /// Creates a new `ParityCheckMatrix` from a list of `checks` where
-    /// each check is a list of the bits connected to that check and the
-    /// number of bits.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # use::believer::ParityCheckMatrix;
-    /// // The parity check matrix of a 3 bits repetition code.
-    /// let parity_check = ParityCheckMatrix::new(
-    ///     vec![
-    ///         vec![0, 1],
-    ///         vec![1, 2],
-    ///     ],
-    ///     3
-    /// );
-    /// ```
-    pub fn new(mut checks: Vec<Vec<usize>>, n_bits: usize) -> Self {
-        let mut bit_indices = Vec::new();
-        let mut check_ranges = Vec::with_capacity(checks.len() + 1);
-        check_ranges.push(0);
-
-        let mut n_elements = 0;
-        for check in checks.iter_mut() {
-            n_elements += check.len();
-            check_ranges.push(n_elements);
-            check.sort();
-            bit_indices.append(check);
-        }
-
-        Self {
-            check_ranges,
-            bit_indices,
-            n_bits,
-        }
-    }
+    
 
     /// TO DOCUMENT
     pub fn periodic_crossings(&self) -> Vec<usize> {
@@ -1205,7 +1179,7 @@ mod test {
     #[test]
     fn construction() {
         let checks = vec![vec![0, 1], vec![1, 2]];
-        let matrix = ParityCheckMatrix::with_n_bits(3).set_checks(checks);
+        let matrix = ParityCheckMatrix::with_n_bits(3).with_checks(checks);
         assert_eq!(matrix.n_bits(), 3);
         assert_eq!(matrix.n_checks(), 2);
     }
