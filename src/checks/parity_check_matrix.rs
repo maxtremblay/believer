@@ -835,9 +835,7 @@ impl Ranker {
     fn new(matrix: &ParityCheckMatrix) -> Self {
         let mut checks = vec![Vec::new(); matrix.n_bits()];
         matrix.checks_iter().for_each(|check| {
-            if let Some(col) = check.min() {
-                checks[*col].push(check.iter().cloned().collect());
-            }
+            checks[check.min()].push(check.iter().cloned().collect());
         });
         Self {
             checks,
@@ -917,25 +915,30 @@ mod test {
     use super::*;
 
     #[test]
-    fn construction() {
-        // Test a 3 bits repetition code.
-        let checks = vec![vec![0, 1], vec![1, 2]];
-        let matrix = ParityCheckMatrix::with_n_bits(3).with_checks(checks);
-        assert_eq!(matrix.n_bits(), 3);
-        assert_eq!(matrix.n_checks(), 2);
-
-        // Test construction when some checks are empty.
-        let checks = vec![
-            vec![0, 1, 2],
-            vec![],
-            vec![1, 3],
-            vec![0, 2, 3],
-            vec![],
-        ];
+    fn checks_are_sorted_on_construction() {
+        let checks = vec![vec![1, 0], vec![0, 2, 1], vec![1, 2, 3]];
         let matrix = ParityCheckMatrix::with_n_bits(4).with_checks(checks);
-        assert_eq!(matrix.n_bits(), 4);
-        assert_eq!(matrix.n_checks(), 3);
 
+        assert_eq!(matrix.check(0).unwrap().as_ref(), &[0, 1]);
+        assert_eq!(matrix.check(1).unwrap().as_ref(), &[0, 1, 2]);
+        assert_eq!(matrix.check(2).unwrap().as_ref(), &[1, 2, 3]);
+    }
+
+    #[test]
+    fn empty_checks_are_removed_on_construction() {
+        let checks = vec![vec![], vec![0, 1], vec![], vec![1, 2]];
+        let matrix = ParityCheckMatrix::with_n_bits(3).with_checks(checks);
+
+        assert_eq!(matrix.check(0).unwrap().as_ref(), &[0, 1]);
+        assert_eq!(matrix.check(1).unwrap().as_ref(), &[1, 2]);
+        assert_eq!(matrix.n_checks(), 2);
+    }
+
+    #[test]
+    #[should_panic]
+    fn panics_on_construction_if_checks_are_out_of_bound() {
+        let checks = vec![vec![0, 1, 5], vec![2, 3, 4]];
+        ParityCheckMatrix::with_n_bits(5).with_checks(checks);
     }
 
     #[test]
