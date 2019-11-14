@@ -11,7 +11,7 @@ pub struct RegularLDPCCodeGenerator {
 }
 
 impl CodeGenerator for RegularLDPCCodeGenerator {
-    fn generate<R: Rng +?Sized>(&self, rng: &mut R) -> ParityCheckMatrix {
+    fn generate<R: Rng + ?Sized>(&self, rng: &mut R) -> ParityCheckMatrix {
         let mut check_generator =
             RandomCheckGenerator::new(vec![self.bit_degree; self.n_bits()], self.minimal_girth);
         let mut checks = Vec::with_capacity(self.n_checks());

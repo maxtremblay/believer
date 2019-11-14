@@ -22,8 +22,8 @@ impl RandomCheckGenerator {
     // Public methods
     // **************
 
-    /// Returns the list of bits adjacent to `bit` given the minimal girth of the generator. 
-    /// 
+    /// Returns the list of bits adjacent to `bit` given the minimal girth of the generator.
+    ///
     /// Two bits are adjacent if connecting them to the same check will create a cycle smaller than
     /// the minimal girth.
     pub fn adjacent_to(&self, bit: usize) -> Vec<usize> {
@@ -45,7 +45,7 @@ impl RandomCheckGenerator {
         rng: &mut R,
     ) -> Option<Vec<usize>> {
         let mut check = Vec::with_capacity(check_degree);
-        for _ in 0..check_degree { 
+        for _ in 0..check_degree {
             self.add_random_bit_to_check(&mut check, rng);
         }
         if check.len() == check_degree {
@@ -67,7 +67,7 @@ impl RandomCheckGenerator {
         Self {
             max_bit_degrees,
             bit_degrees: vec![0; n_bits],
-            adjacency_depth: minimal_girth  / 2,
+            adjacency_depth: minimal_girth / 2,
             adjacencies: (0..n_bits).map(|b| [b].iter().cloned().collect()).collect(),
             active_bits: (0..n_bits).collect(),
             distribution: vec![1.0 / n_bits as f64; n_bits],
@@ -88,7 +88,9 @@ impl RandomCheckGenerator {
 
     pub fn reset(&mut self) {
         self.bit_degrees = vec![0; self.n_bits()];
-        self.adjacencies = (0..self.n_bits()).map(|b| [b].iter().cloned().collect()).collect();
+        self.adjacencies = (0..self.n_bits())
+            .map(|b| [b].iter().cloned().collect())
+            .collect();
     }
 
     pub fn with_distribution(&mut self, probs: Vec<f64>) -> &mut Self {
@@ -135,18 +137,20 @@ impl RandomCheckGenerator {
         }
     }
 
-
     // Helper function for `self.adjacent_to(...)`.
-    fn adjacent_to_recursion(&self, bit: usize, depth: usize, adjacents: &mut BTreeMap<usize, usize>) {
+    fn adjacent_to_recursion(
+        &self,
+        bit: usize,
+        depth: usize,
+        adjacents: &mut BTreeMap<usize, usize>,
+    ) {
         adjacents.insert(bit, depth);
         if depth > 0 {
-            self.adjacencies[bit]
-                .iter()
-                .for_each(|b| {
-                    if adjacents.get(&b).map(|d| *d < depth).unwrap_or(true) {
-                        self.adjacent_to_recursion(*b, depth - 1, adjacents);
-                    }
-                })
+            self.adjacencies[bit].iter().for_each(|b| {
+                if adjacents.get(&b).map(|d| *d < depth).unwrap_or(true) {
+                    self.adjacent_to_recursion(*b, depth - 1, adjacents);
+                }
+            })
         }
     }
 
@@ -156,8 +160,8 @@ impl RandomCheckGenerator {
 
     fn update_adjacency(&mut self, check: &[usize]) {
         check.iter().for_each(|bit_0| {
-            check.iter().for_each(|bit_1| { 
-                self.adjacencies[*bit_1].insert(*bit_0); 
+            check.iter().for_each(|bit_1| {
+                self.adjacencies[*bit_1].insert(*bit_0);
             });
         });
     }
@@ -172,35 +176,49 @@ mod test {
     #[test]
     fn test_adjacencies() {
         let mut rng = ChaCha8Rng::seed_from_u64(10);
-        
+
         // A 15 bit check generator with minimal girth 6;
         let mut generator = RandomCheckGenerator::new(vec![3; 15], 6);
-        
+
         // Each bit is adjacent to itself.
         (0..15).for_each(|b| assert_eq!(generator.adjacent_to(b), vec![b]));
 
         // Generate some random weight 3 checks.
-        assert_eq!(generator.generate(3, &mut rng), Some(vec![0, 8, 9])); 
+        assert_eq!(generator.generate(3, &mut rng), Some(vec![0, 8, 9]));
         assert_eq!(generator.generate(3, &mut rng), Some(vec![2, 10, 12]));
         assert_eq!(generator.generate(3, &mut rng), Some(vec![1, 4, 12]));
         assert_eq!(generator.generate(3, &mut rng), Some(vec![0, 1, 11]));
         assert_eq!(generator.generate(3, &mut rng), Some(vec![0, 5, 6]));
 
-
         // Check adjacencies
-        assert_eq!(generator.adjacent_to(0), vec![0, 1, 2, 4, 5, 6, 8, 9, 10, 11, 12]);
-        assert_eq!(generator.adjacent_to(1), vec![0, 1, 2, 4, 5, 6, 8, 9, 10, 11, 12]);
+        assert_eq!(
+            generator.adjacent_to(0),
+            vec![0, 1, 2, 4, 5, 6, 8, 9, 10, 11, 12]
+        );
+        assert_eq!(
+            generator.adjacent_to(1),
+            vec![0, 1, 2, 4, 5, 6, 8, 9, 10, 11, 12]
+        );
         assert_eq!(generator.adjacent_to(2), vec![0, 1, 2, 4, 10, 11, 12]);
         assert_eq!(generator.adjacent_to(3), vec![3]);
-        assert_eq!(generator.adjacent_to(4), vec![0, 1, 2, 4, 5, 6, 8, 9, 10, 11, 12]);
+        assert_eq!(
+            generator.adjacent_to(4),
+            vec![0, 1, 2, 4, 5, 6, 8, 9, 10, 11, 12]
+        );
         assert_eq!(generator.adjacent_to(5), vec![0, 1, 4, 5, 6, 8, 9, 11, 12]);
         assert_eq!(generator.adjacent_to(6), vec![0, 1, 4, 5, 6, 8, 9, 11, 12]);
         assert_eq!(generator.adjacent_to(7), vec![7]);
         assert_eq!(generator.adjacent_to(8), vec![0, 1, 4, 5, 6, 8, 9, 11, 12]);
         assert_eq!(generator.adjacent_to(9), vec![0, 1, 4, 5, 6, 8, 9, 11, 12]);
         assert_eq!(generator.adjacent_to(10), vec![0, 1, 2, 4, 10, 11, 12]);
-        assert_eq!(generator.adjacent_to(11), vec![0, 1, 2, 4, 5, 6, 8, 9, 10, 11, 12]);
-        assert_eq!(generator.adjacent_to(12), vec![0, 1, 2, 4, 5, 6, 8, 9, 10, 11, 12]);
+        assert_eq!(
+            generator.adjacent_to(11),
+            vec![0, 1, 2, 4, 5, 6, 8, 9, 10, 11, 12]
+        );
+        assert_eq!(
+            generator.adjacent_to(12),
+            vec![0, 1, 2, 4, 5, 6, 8, 9, 10, 11, 12]
+        );
         assert_eq!(generator.adjacent_to(13), vec![13]);
         assert_eq!(generator.adjacent_to(14), vec![14]);
     }

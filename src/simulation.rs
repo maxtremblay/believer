@@ -35,7 +35,7 @@ impl<D: Decoder> Simulator<D> {
                 let mut failures = 0;
                 while successes == 0 || failures == 0 {
                     // if (successes + failures) % 5000 == 0 && successes + failures > 0{
-                    //     println!("S: {} // F: {}", successes, failures);    
+                    //     println!("S: {} // F: {}", successes, failures);
                     // }
                     let error = self.decoder.random_error();
                     if self.decoder.decode(&error).succeed() {

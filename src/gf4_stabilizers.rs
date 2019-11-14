@@ -90,7 +90,10 @@ impl GF4Stabilizers {
     }
 
     pub fn n_stabilizers(&self) -> usize {
-        std::cmp::max(self.x_checks().get_n_checks(), self.z_checks().get_n_checks())
+        std::cmp::max(
+            self.x_checks().get_n_checks(),
+            self.z_checks().get_n_checks(),
+        )
     }
 
     pub fn without(&self, qubits: &[usize]) -> Self {

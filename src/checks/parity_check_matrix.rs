@@ -1,12 +1,12 @@
 //! A sparse implementation of a parity check matrix.
 
+use super::Check;
 use crate::GF2;
 use itertools::EitherOrBoth::{Both, Left, Right};
 use itertools::Itertools;
 use std::cmp::Ordering;
 use std::cmp::{max, min};
 use std::ops::{Add, Mul};
-use super::Check;
 
 // *******************
 // Parity Check Matrix
@@ -26,9 +26,9 @@ impl ParityCheckMatrix {
     // ************
 
     /// Creates a new `ParityCheckMatrix` with `n_bits` and no checks.
-    /// 
-    /// # Example 
-    /// 
+    ///
+    /// # Example
+    ///
     /// ```
     /// # use believer::*;
     /// let matrix = ParityCheckMatrix::with_n_bits(5);
@@ -39,19 +39,19 @@ impl ParityCheckMatrix {
         Self {
             check_ranges: vec![],
             bit_indices: vec![],
-            n_bits
+            n_bits,
         }
     }
 
-    /// Set the checks of `self` consuming `checks`. 
-    /// 
-    /// # Panic 
-    /// 
+    /// Set the checks of `self` consuming `checks`.
+    ///
+    /// # Panic
+    ///
     /// Panics if some checks are out of bounds. That is, if they are connected to a bit that is
     /// greater or equal than `self.get_n_bits()`.
-    /// 
-    /// # Example 
-    /// 
+    ///
+    /// # Example
+    ///
     /// ```
     /// # use believer::*;
     /// let checks = vec![vec![0, 1], vec![1, 2]];
@@ -73,7 +73,11 @@ impl ParityCheckMatrix {
     }
 
     fn is_out_of_bounds(&self, check: &[usize]) -> bool {
-        check.iter().max().map(|max| *max >= self.n_bits).unwrap_or(false)
+        check
+            .iter()
+            .max()
+            .map(|max| *max >= self.n_bits)
+            .unwrap_or(false)
     }
 
     fn init_bit_indices(&mut self, checks: &[Vec<usize>]) {
@@ -97,7 +101,6 @@ impl ParityCheckMatrix {
     fn add_check(&mut self, check: Vec<usize>) {
         self.add_check_range(&check);
         self.add_bit_indices(check);
-        
     }
 
     fn add_check_range(&mut self, check: &[usize]) {
@@ -231,20 +234,20 @@ impl ParityCheckMatrix {
     ///     ],
     ///     3
     /// );
-    /// 
+    ///
     /// let check = parity_check.get_check(0).unwrap();
     /// assert_eq!(check.as_ref(), &[0, 1]);
-    /// 
+    ///
     /// let check = parity_check.get_check(1).unwrap();
     /// assert_eq!(check.as_ref(), &[1, 2]);
-    /// 
+    ///
     /// assert!(parity_check.get_check(2).is_none());
     /// ```
     pub fn get_check(&self, check: usize) -> Option<Check> {
         self.check_ranges.get(check).and_then(|&check_start| {
-            self.check_ranges.get(check + 1).map(|&check_end| {
-                Check::from_slice(&self.bit_indices[check_start..check_end])
-            })
+            self.check_ranges
+                .get(check + 1)
+                .map(|&check_end| Check::from_slice(&self.bit_indices[check_start..check_end]))
         })
     }
 
@@ -266,7 +269,9 @@ impl ParityCheckMatrix {
     /// assert_eq!(parity_check.dot(&vector), vec![GF2::B1, GF2::B0]);
     /// ```
     pub fn dot(&self, vector: &[GF2]) -> Vec<GF2> {
-        self.checks_iter().map(|check| check.compute_syndrome(vector)).collect()
+        self.checks_iter()
+            .map(|check| check.compute_syndrome(vector))
+            .collect()
     }
 
     /// Creates an empty parity check matrix. That is, a parity check with 0 bit and 0 check.
@@ -318,9 +323,9 @@ impl ParityCheckMatrix {
     }
 
     /// Returns a truncated parity check matrix with only the column of the given `bits`.
-    /// 
+    ///
     /// # Example
-    /// 
+    ///
     /// ```
     /// # use believer::*;
     /// let checks = ParityCheckMatrix::new(
@@ -341,7 +346,7 @@ impl ParityCheckMatrix {
     ///     ],
     ///     5  
     /// );
-    /// 
+    ///
     /// assert_eq!(checks.keep(&[0, 1, 4]), truncated_checks);
     /// ```
     pub fn keep(&self, bits: &[usize]) -> Self {
@@ -633,11 +638,11 @@ impl ParityCheckMatrix {
 
         ParityCheckMatrix::new(checks, l)
     }
-    
+
     /// Returns a truncated parity check matrix where the column of the given `bits` are remove.
-    /// 
+    ///
     /// # Example
-    /// 
+    ///
     /// ```
     /// # use believer::*;
     /// let checks = ParityCheckMatrix::new(
@@ -658,7 +663,7 @@ impl ParityCheckMatrix {
     ///     ],
     ///     5  
     /// );
-    /// 
+    ///
     /// assert_eq!(checks.without(&[0, 2]), truncated_checks);
     /// ```
     pub fn without(&self, bits: &[usize]) -> Self {
@@ -761,7 +766,7 @@ impl Add for &ParityCheckMatrix {
     }
 }
 
-// NOTE: IS IT USEFUL??? 
+// NOTE: IS IT USEFUL???
 
 // impl Mul for &ParityCheckMatrix {
 //     type Output = ParityCheckMatrix;
@@ -779,7 +784,7 @@ impl Add for &ParityCheckMatrix {
 
 //             for (i, v2) in b.transpose().checks_iter().enumerate() {
 //                 let dot_res = ParityCheckMatrix::sparse_dot(
-//                     &v1.iter().cloned().collect(), 
+//                     &v1.iter().cloned().collect(),
 //                     &v2.iter().cloned().collect()
 //                 );
 
@@ -963,8 +968,14 @@ mod test {
         let parity_check = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2]], 3);
         let bits = vec![GF2::B0, GF2::B1, GF2::B1];
 
-        assert_eq!(parity_check.get_check(0).unwrap().compute_syndrome(&bits), GF2::B1);
-        assert_eq!(parity_check.get_check(1).unwrap().compute_syndrome(&bits), GF2::B0);
+        assert_eq!(
+            parity_check.get_check(0).unwrap().compute_syndrome(&bits),
+            GF2::B1
+        );
+        assert_eq!(
+            parity_check.get_check(1).unwrap().compute_syndrome(&bits),
+            GF2::B0
+        );
         assert_eq!(parity_check.dot(&bits), vec![GF2::B1, GF2::B0]);
     }
 

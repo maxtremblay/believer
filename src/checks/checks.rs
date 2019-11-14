@@ -1,7 +1,7 @@
-//! A view over a check of a parity check matrix. 
-//! 
-//! # Example 
-//! 
+//! A view over a check of a parity check matrix.
+//!
+//! # Example
+//!
 //! ```
 //! # use believer::*;
 //! let all_checks = vec![
@@ -10,7 +10,7 @@
 //!     vec![1, 2, 3],
 //! ];
 //! let matrix = ParityCheckMatrix::with_n_bits(4).with_checks(all_checks);
-//! 
+//!
 //! let second_check = matrix.check(2);
 //! ```
 
@@ -35,7 +35,7 @@ impl<'a> Check<'a> {
 
     /// Returns the syndrome of a given `message`. That is, returns the dot product between
     /// `self` and `message`.
-    /// 
+    ///
     /// # Example
     ///
     /// ```
@@ -56,10 +56,7 @@ impl<'a> Check<'a> {
     /// ```
     pub fn compute_syndrome(&self, message: &[GF2]) -> GF2 {
         self.iter().fold(GF2::B0, |acc, &bit| {
-            message
-                .get(bit)
-                .map(|&value| acc + value)
-                .unwrap_or(acc)
+            message.get(bit).map(|&value| acc + value).unwrap_or(acc)
         })
     }
 
@@ -104,7 +101,7 @@ impl<'a> Check<'a> {
     }
 
     /// Returns the bit connected to `self` with maximal index.
-    /// 
+    ///
     /// # Example
     ///
     /// ```
@@ -129,7 +126,7 @@ impl<'a> Check<'a> {
     }
 
     /// Returns the bit connected to `self` with minimal index if `self`
-    /// 
+    ///
     /// # Example
     ///
     /// ```
@@ -158,5 +155,5 @@ impl<'a> AsRef<[usize]> for Check<'a> {
     /// Returns the indices of the bits connected to `self` as a slice.
     fn as_ref(&self) -> &[usize] {
         self.bits
-    } 
+    }
 }
