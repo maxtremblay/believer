@@ -231,12 +231,16 @@ impl ParityCheckMatrix {
     ///     ],
     ///     3
     /// );
-    /// let slice = parity_check.check(0).unwrap();
-    /// let vector = vec![GF2::B1, GF2::B1, GF2::B0];
-    ///
-    /// assert_eq!(slice.compute_syndrome(&vector), GF2::B0);
+    /// 
+    /// let check = parity_check.get_check(0).unwrap();
+    /// assert_eq!(check.as_ref(), &[0, 1]);
+    /// 
+    /// let check = parity_check.get_check(1).unwrap();
+    /// assert_eq!(check.as_ref(), &[1, 2]);
+    /// 
+    /// assert!(parity_check.get_check(2).is_none());
     /// ```
-    pub fn check(&self, check: usize) -> Option<Check> {
+    pub fn get_check(&self, check: usize) -> Option<Check> {
         self.check_ranges.get(check).and_then(|&check_start| {
             self.check_ranges.get(check + 1).map(|&check_end| {
                 Check::from_slice(&self.bit_indices[check_start..check_end])
@@ -700,7 +704,7 @@ impl<'a> Iterator for ChecksIter<'a> {
     type Item = Check<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let slice = self.matrix.check(self.active_check);
+        let slice = self.matrix.get_check(self.active_check);
         self.active_check += 1;
         slice
     }
@@ -717,8 +721,8 @@ impl Add for &ParityCheckMatrix {
         let mut new_rows: Vec<Vec<usize>> = Vec::with_capacity(nb_rows);
 
         for nb_row in 0..nb_rows {
-            let a_row: Vec<usize> = self.check(nb_row).unwrap().iter().cloned().collect();
-            let b_row: Vec<usize> = b.check(nb_row).unwrap().iter().cloned().collect();
+            let a_row: Vec<usize> = self.get_check(nb_row).unwrap().iter().cloned().collect();
+            let b_row: Vec<usize> = b.get_check(nb_row).unwrap().iter().cloned().collect();
 
             let mut accum: Vec<usize> = Vec::with_capacity(a_row.len() + b_row.len()); // in the worst case the 1s are in different places and don't cancel out
 
@@ -919,9 +923,9 @@ mod test {
         let checks = vec![vec![1, 0], vec![0, 2, 1], vec![1, 2, 3]];
         let matrix = ParityCheckMatrix::with_n_bits(4).with_checks(checks);
 
-        assert_eq!(matrix.check(0).unwrap().as_ref(), &[0, 1]);
-        assert_eq!(matrix.check(1).unwrap().as_ref(), &[0, 1, 2]);
-        assert_eq!(matrix.check(2).unwrap().as_ref(), &[1, 2, 3]);
+        assert_eq!(matrix.get_check(0).unwrap().as_ref(), &[0, 1]);
+        assert_eq!(matrix.get_check(1).unwrap().as_ref(), &[0, 1, 2]);
+        assert_eq!(matrix.get_check(2).unwrap().as_ref(), &[1, 2, 3]);
     }
 
     #[test]
@@ -929,8 +933,8 @@ mod test {
         let checks = vec![vec![], vec![0, 1], vec![], vec![1, 2]];
         let matrix = ParityCheckMatrix::with_n_bits(3).with_checks(checks);
 
-        assert_eq!(matrix.check(0).unwrap().as_ref(), &[0, 1]);
-        assert_eq!(matrix.check(1).unwrap().as_ref(), &[1, 2]);
+        assert_eq!(matrix.get_check(0).unwrap().as_ref(), &[0, 1]);
+        assert_eq!(matrix.get_check(1).unwrap().as_ref(), &[1, 2]);
         assert_eq!(matrix.get_n_checks(), 2);
     }
 
@@ -946,12 +950,12 @@ mod test {
         let parity_check = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2]], 3);
         let mut iter = parity_check.checks_iter();
 
-        assert_eq!(iter.next(), parity_check.check(0));
-        assert_eq!(iter.next(), parity_check.check(1));
+        assert_eq!(iter.next(), parity_check.get_check(0));
+        assert_eq!(iter.next(), parity_check.get_check(1));
         assert_eq!(iter.next(), None);
 
-        assert_eq!(parity_check.check(0).unwrap().as_ref(), &[0, 1]);
-        assert_eq!(parity_check.check(1).unwrap().as_ref(), &[1, 2]);
+        assert_eq!(parity_check.get_check(0).unwrap().as_ref(), &[0, 1]);
+        assert_eq!(parity_check.get_check(1).unwrap().as_ref(), &[1, 2]);
     }
 
     #[test]
@@ -959,8 +963,8 @@ mod test {
         let parity_check = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2]], 3);
         let bits = vec![GF2::B0, GF2::B1, GF2::B1];
 
-        assert_eq!(parity_check.check(0).unwrap().compute_syndrome(&bits), GF2::B1);
-        assert_eq!(parity_check.check(1).unwrap().compute_syndrome(&bits), GF2::B0);
+        assert_eq!(parity_check.get_check(0).unwrap().compute_syndrome(&bits), GF2::B1);
+        assert_eq!(parity_check.get_check(1).unwrap().compute_syndrome(&bits), GF2::B0);
         assert_eq!(parity_check.dot(&bits), vec![GF2::B1, GF2::B0]);
     }
 
