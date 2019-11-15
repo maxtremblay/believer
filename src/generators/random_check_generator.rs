@@ -11,8 +11,7 @@ use std::collections::{BTreeMap, BTreeSet};
 pub struct RandomCheckGenerator {
     max_bit_degrees: usize,
     bit_degrees: Vec<usize>,
-    adjacencies: Vec<BTreeSet<usize>>,
-    adjacency_depth: usize,
+    adjacency: Adjacency,
     active_bits: Vec<usize>,
     distribution: Vec<f64>,
 }
@@ -22,27 +21,19 @@ impl RandomCheckGenerator {
     // Construction
     // ************
 
-    // pub fn new(max_bit_degrees: Vec<usize>, minimal_girth: usize) -> Self {
-    //     let n_bits = max_bit_degrees.len();
-    //     Self {
-    //         max_bit_degrees,
-    //         bit_degrees: vec![0; n_bits],
-    //         adjacency_depth: minimal_girth / 2,
-    //         adjacencies: (0..n_bits).map(|b| [b].iter().cloned().collect()).collect(),
-    //         active_bits: (0..n_bits).collect(),
-    //         distribution: vec![1.0 / n_bits as f64; n_bits],
-    //     }
-    // }
-
     pub fn new() -> Self {
         Self {
             max_bit_degrees: 0,
             bit_degrees: Vec::new(),
-            adjacency_depth: 0,
-            adjacencies: Vec::new(),
+            adjacency: Adjacency::new(),
             active_bits: Vec::new(),
             distribution: Vec::new(),
         }
+    }
+
+    pub fn with_minimal_girth(mut self, girth: usize) -> Self {
+        self.adjacency.set_recursion_depth_from_girth(girth);
+        self
     }
 
     pub fn with_max_bit_degrees(mut self, degrees: usize) -> Self {
@@ -50,14 +41,9 @@ impl RandomCheckGenerator {
         self
     }
 
-    pub fn with_minimal_girth(mut self, girth: usize) -> Self {
-        self.adjacency_depth = girth / 2;
-        self
-    }
-
     pub fn with_n_bits(mut self, n_bits: usize) -> Self {
         self.set_bit_degrees(n_bits);
-        self.set_adjacencies(n_bits);
+        self.adjacency.initialize_adjacencies(n_bits);
         self.set_active_bits(n_bits);
         self.set_distribution(n_bits);
         self
@@ -65,16 +51,6 @@ impl RandomCheckGenerator {
 
     fn set_bit_degrees(&mut self, n_bits: usize) {
         self.bit_degrees = vec![0; n_bits];
-    }
-
-    fn set_adjacencies(&mut self, n_bits: usize) {
-        self.adjacencies = (0..n_bits)
-            .map(|b| {
-                let mut set = BTreeSet::new();
-                set.insert(b);
-                set
-            })
-            .collect();
     }
 
     fn set_active_bits(&mut self, n_bits: usize) {
@@ -94,15 +70,7 @@ impl RandomCheckGenerator {
     /// Two bits are adjacent if connecting them to the same check will create a cycle smaller than
     /// the minimal girth.
     pub fn adjacent_to(&self, bit: usize) -> Vec<usize> {
-        if bit >= self.n_bits() {
-            Vec::new()
-        } else if self.adjacency_depth == 0 {
-            vec![bit]
-        } else {
-            let mut adjacents = BTreeMap::new();
-            self.adjacent_to_recursion(bit, self.adjacency_depth, &mut adjacents);
-            adjacents.keys().cloned().collect()
-        }
+        self.adjacency.get_bits_adjacent_to(bit)
     }
 
     /// Generates a random check of degree `check_degree` using the random number generator `rng`.
@@ -116,7 +84,7 @@ impl RandomCheckGenerator {
             self.add_random_bit_to_check(&mut check, rng);
         }
         if check.len() >= 2 {
-            self.update_adjacency(&check);
+            self.update_adjacency_from_check(&check);
             check.iter().for_each(|bit| self.bit_degrees[*bit] += 1);
             check.sort();
             Some(check)
@@ -125,12 +93,12 @@ impl RandomCheckGenerator {
         }
     }
 
-    pub fn n_bits(&self) -> usize {
+    pub fn get_n_bits(&self) -> usize {
         self.bit_degrees.len()
     }
 
     pub fn over_all_bits(&mut self) -> &mut Self {
-        self.active_bits = (0..self.n_bits()).collect();
+        self.active_bits = (0..self.get_n_bits()).collect();
         self
     }
 
@@ -142,14 +110,13 @@ impl RandomCheckGenerator {
     }
 
     pub fn reset(&mut self) {
-        self.bit_degrees = vec![0; self.n_bits()];
-        self.adjacencies = (0..self.n_bits())
-            .map(|b| [b].iter().cloned().collect())
-            .collect();
+        self.set_bit_degrees(self.get_n_bits());
+        self.adjacency.initialize_adjacencies(self.get_n_bits());
     }
 
+
     pub fn with_distribution(&mut self, probs: Vec<f64>) -> &mut Self {
-        if probs.len() != self.n_bits() {
+        if probs.len() != self.get_n_bits() {
             panic!("wrong number of probabilities");
         }
         self.distribution = probs;
@@ -157,7 +124,7 @@ impl RandomCheckGenerator {
     }
 
     pub fn with_uniform_distribution(&mut self) -> &mut Self {
-        self.distribution = vec![1.0 / self.n_bits() as f64; self.n_bits()];
+        self.distribution = vec![1.0 / self.get_n_bits() as f64; self.get_n_bits()];
         self
     }
 
@@ -192,35 +159,129 @@ impl RandomCheckGenerator {
         }
     }
 
-    // Helper function for `self.adjacent_to(...)`.
-    fn adjacent_to_recursion(
-        &self,
-        bit: usize,
-        depth: usize,
-        adjacents: &mut BTreeMap<usize, usize>,
-    ) {
-        adjacents.insert(bit, depth);
+    fn are_not_adjacent(&self, bit_0: &usize, bit_1: &usize) -> bool {
+        !self.adjacent_to(*bit_0).contains(bit_1)
+    }
+
+    fn update_adjacency_from_check(&mut self, check: &[usize]) {
+        self.adjacency.update_from_check(check)
+    }
+}
+
+struct Adjacency {
+    adjacencies: Vec<BTreeSet<usize>>,
+    depth: usize,
+}
+
+impl Adjacency {
+
+    // ***** Construction *****
+
+    fn new() -> Self {
+        Self {
+            depth: 0,
+            adjacencies: Vec::new(),
+        }
+    }
+
+    fn initialize_adjacencies(&mut self, n_bits: usize) {
+        self.adjacencies = (0..n_bits)
+            .map(|b| {
+                let mut set = BTreeSet::new();
+                set.insert(b);
+                set
+            })
+            .collect();
+    }
+
+    fn set_recursion_depth_from_girth(&mut self, girth: usize) {
+        self.depth = girth / 2;
+    }
+
+    // ***** Get adjacent bits *****
+
+    fn get_bits_adjacent_to(&self, bit: usize) -> Vec<usize> {
+        if self.is_out_of_bound(bit) {
+            Vec::new()
+        } else {
+            self.get_bits_adjacent_to_inbound_bit(bit)
+        }
+    }
+
+    fn is_out_of_bound(&self, bit:usize) -> bool {
+        bit >= self.get_n_bits()
+    }
+
+    fn get_n_bits(&self) -> usize {
+        self.adjacencies.len()
+    }
+
+    fn get_bits_adjacent_to_inbound_bit(&self, bit: usize) -> Vec<usize> {
+        if self.depth == 0 {
+            vec![bit]
+        } else {
+            let mut getter = self.initialize_adjacent_bits_getter(bit);
+            getter.get_adjacent_bits_at_depth(self.depth)
+        }
+    }
+
+    fn initialize_adjacent_bits_getter(&self, source_bit: usize) -> AdjacentBitsGetter {
+        AdjacentBitsGetter {
+            source_bit,
+            adjacent_bits: BTreeMap::new(),
+            adjacencies: &self.adjacencies,
+        }
+    }
+
+    // ***** Update adjacent bits *****
+
+    fn update_from_check(&mut self, check: &[usize]) {
+        check.iter().for_each(|bit| self.set_bits_in_check_adjacent_to(*bit, check));
+    }
+
+    fn set_bits_in_check_adjacent_to(&mut self, source_bit: usize, check: &[usize]) {
+        check.iter().for_each(|adjacent_bit| {
+            self.adjacencies[source_bit].insert(*adjacent_bit);
+        });
+    }
+}
+
+struct AdjacentBitsGetter<'a> {
+    source_bit: usize,
+    adjacent_bits: BTreeMap<usize, usize>,
+    adjacencies: &'a [BTreeSet<usize>]
+}
+
+impl<'a> AdjacentBitsGetter<'a> {
+    fn get_adjacent_bits_at_depth(&mut self, depth: usize) -> Vec<usize> {
+        if self.adjacent_bits.is_empty() {
+            self.recursively_set_adjacent_bits(self.source_bit, depth);
+        }
+        self.get_adjacent_bits_as_vec()
+    }
+
+    fn recursively_set_adjacent_bits(&mut self, bit: usize, depth: usize) {
+        self.adjacent_bits.insert(bit, depth);
         if depth > 0 {
             self.adjacencies[bit].iter().for_each(|b| {
-                if adjacents.get(&b).map(|d| *d < depth).unwrap_or(true) {
-                    self.adjacent_to_recursion(*b, depth - 1, adjacents);
+                if self.has_not_been_set_at_depth(b, depth) {
+                    self.recursively_set_adjacent_bits(*b, depth - 1);
                 }
             })
         }
     }
 
-    fn are_not_adjacent(&self, bit_0: &usize, bit_1: &usize) -> bool {
-        !self.adjacent_to(*bit_0).contains(bit_1)
+    fn has_not_been_set_at_depth(&self, bit: &usize, depth: usize) -> bool {
+        self.adjacent_bits[bit] < depth
     }
 
-    fn update_adjacency(&mut self, check: &[usize]) {
-        check.iter().for_each(|bit_0| {
-            check.iter().for_each(|bit_1| {
-                self.adjacencies[*bit_1].insert(*bit_0);
-            });
-        });
+    fn get_adjacent_bits_as_vec(&self) -> Vec<usize> {
+        self.adjacent_bits.keys().cloned().collect()
     }
 }
+
+
+
 
 #[cfg(test)]
 mod test {
