@@ -4,8 +4,7 @@ use rand::Rng;
 
 /// A `Generator` helps generating checks for a code while respecting some global constraints.
 ///
-/// Constraints are degrees and minimal girth. A `Generator` is consumed while generating checks
-/// and need to be reset before being use to generate checks for another code.
+/// Constraints are degrees and minimal girth. A `Generator` is consumed while generating checks.
 ///
 /// # Example 
 ///
@@ -145,12 +144,6 @@ impl Generator {
     pub fn set_uniform_distribution(&mut self) -> &mut Self {
         self.distribution = vec![1.0 / self.get_n_bits() as f64; self.get_n_bits()];
         self
-    }
-
-    pub fn reset(&mut self) {
-        let n_bits = self.get_n_bits();
-        self.initialize_bit_degrees(n_bits);
-        self.initialize_adjacency(n_bits);
     }
 
     // ***** Getters *****
