@@ -34,8 +34,7 @@ pub trait CodeGenerator {
     }
 }
 
-pub mod random_check_generator;
-pub use random_check_generator::*;
+pub mod random_check;
 
 pub mod regular_ldpc;
 pub use regular_ldpc::*;

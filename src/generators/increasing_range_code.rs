@@ -1,4 +1,5 @@
-use super::{CodeGenerator, RandomCheckGenerator};
+use super::CodeGenerator;
+use super::random_check::Generator as RandomCheckGenerator;
 use crate::ParityCheckMatrix;
 use rand::Rng;
 
