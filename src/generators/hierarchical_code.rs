@@ -1,5 +1,5 @@
-use super::CodeGenerator;
 use super::random_check::Generator as RandomCheckGenerator;
+use super::CodeGenerator;
 use crate::ParityCheckMatrix;
 use rand::Rng;
 
@@ -25,7 +25,7 @@ impl HierarchicalCodeGeneratorBuilder {
             initial_block_length: None,
             n_checks_per_block: None,
             n_blocks_per_layer: None,
-        }        
+        }
     }
 
     pub fn with_bit_and_check_degree(mut self, bit_degree: usize, check_degree: usize) -> Self {
@@ -86,7 +86,6 @@ impl HierarchicalCodeGeneratorBuilder {
     }
 }
 
-
 pub struct HierarchicalCodeGenerator {
     bit_degree: usize,
     check_degree: usize,
@@ -102,9 +101,9 @@ impl HierarchicalCodeGenerator {
     // ************
 
     /// Creates a `HierarchicalCodeGenerator` that will generate an empty code.
-    /// 
+    ///
     /// # Example
-    /// 
+    ///
     /// ```
     /// use believer::hierarchical_codes::HierarchicalCodeGenerator;
     /// let generator = HierarchicalCodeGenerator::new()
@@ -149,10 +148,10 @@ impl HierarchicalCodeGenerator {
     }
 
     fn generate_layer_checks<R: Rng + ?Sized>(
-        &self, 
-        layer: usize, 
+        &self,
+        layer: usize,
         check_generator: &mut RandomCheckGenerator,
-        rng: &mut R
+        rng: &mut R,
     ) -> Vec<Vec<usize>> {
         let blocks = self.get_blocks_for_layer(layer);
         blocks
@@ -164,14 +163,16 @@ impl HierarchicalCodeGenerator {
     fn get_blocks_for_layer(&self, layer: usize) -> Vec<Vec<usize>> {
         let n_blocks = self.get_n_blocks_for_layer(layer);
         let block_length = self.get_block_length_for_layer(layer);
-        (0..n_blocks).map(|block| {
-            (0..block_length).map(|b| b + block * block_length).collect()
-        })
-        .collect()
+        (0..n_blocks)
+            .map(|block| {
+                (0..block_length)
+                    .map(|b| b + block * block_length)
+                    .collect()
+            })
+            .collect()
     }
 
-    fn get_n_blocks_for_layer(&self, layer: usize) -> usize
-     {
+    fn get_n_blocks_for_layer(&self, layer: usize) -> usize {
         self.n_blocks_per_layer.pow((self.n_layers - layer) as u32)
     }
 
@@ -181,15 +182,13 @@ impl HierarchicalCodeGenerator {
 
     fn generate_checks_on_block<R: Rng + ?Sized>(
         &self,
-        block: Vec<usize>, 
+        block: Vec<usize>,
         check_generator: &mut RandomCheckGenerator,
-        rng: &mut R
+        rng: &mut R,
     ) -> Vec<Vec<usize>> {
         check_generator.over_bits(block);
         (0..self.n_checks_per_block)
-            .filter_map(|_| {
-                check_generator.generate(self.check_degree as usize, rng)
-            })
+            .filter_map(|_| check_generator.generate(self.check_degree as usize, rng))
             .collect()
     }
 
@@ -219,13 +218,16 @@ impl CodeGenerator for HierarchicalCodeGenerator {
 #[cfg(test)]
 mod test {
     use super::*;
-    use rand::{SeedableRng, thread_rng};
+    use rand::{thread_rng, SeedableRng};
     use rand_chacha::ChaCha8Rng;
 
     #[test]
     fn default_constructor_generate_empty_code() {
         let generator = HierarchicalCodeGenerator::new();
-        assert_eq!(generator.generate(&mut thread_rng()), ParityCheckMatrix::empty());
+        assert_eq!(
+            generator.generate(&mut thread_rng()),
+            ParityCheckMatrix::empty()
+        );
     }
 
     #[test]
@@ -246,9 +248,8 @@ mod test {
             .with_n_checks_per_block(6)
             .build();
 
-        let mut rng = ChaCha8Rng::seed_from_u64(10);    
+        let mut rng = ChaCha8Rng::seed_from_u64(10);
         let code = generator.generate(&mut rng);
         println!("{}", code);
-
     }
 }

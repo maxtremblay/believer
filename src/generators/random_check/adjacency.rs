@@ -4,14 +4,13 @@ use std::collections::{BTreeMap, BTreeSet};
 // construction.
 //
 // It keeps track of the adjacencies of every bit. Two bits are adjacent if creating a new check
-// containing both of them would create a cycle smaller than the minimal girth. 
+// containing both of them would create a cycle smaller than the minimal girth.
 pub(super) struct Adjacency {
     adjacencies: Vec<BTreeSet<usize>>,
     recursion_depth: usize,
 }
 
 impl Adjacency {
-
     // ***** Construction *****
 
     pub(super) fn new() -> Self {
@@ -38,6 +37,8 @@ impl Adjacency {
             .collect()
     }
 
+    // ***** Set recursion depth *****
+
     pub(super) fn set_recursion_depth(&mut self, depth: usize) {
         self.recursion_depth = depth;
     }
@@ -52,7 +53,7 @@ impl Adjacency {
         }
     }
 
-    fn is_out_of_bound(&self, bit:usize) -> bool {
+    fn is_out_of_bound(&self, bit: usize) -> bool {
         bit >= self.get_n_bits()
     }
 
@@ -80,7 +81,9 @@ impl Adjacency {
     // ***** Update adjacent bits *****
 
     pub(super) fn update_from_check(&mut self, check: &[usize]) {
-        check.iter().for_each(|bit| self.set_bits_in_check_adjacent_to(*bit, check));
+        check
+            .iter()
+            .for_each(|bit| self.set_bits_in_check_adjacent_to(*bit, check));
     }
 
     fn set_bits_in_check_adjacent_to(&mut self, source_bit: usize, check: &[usize]) {
@@ -93,7 +96,7 @@ impl Adjacency {
 struct AdjacentBitsGetter<'a> {
     source_bit: usize,
     adjacent_bits: BTreeMap<usize, usize>,
-    adjacencies: &'a [BTreeSet<usize>]
+    adjacencies: &'a [BTreeSet<usize>],
 }
 
 impl<'a> AdjacentBitsGetter<'a> {
@@ -140,7 +143,7 @@ mod test {
         }
     }
 
-    #[test] 
+    #[test]
     fn without_check_every_bit_is_adjacent_only_to_itself() {
         let mut adjacency = Adjacency::with_n_bits(5);
         adjacency.set_recursion_depth(10);
@@ -149,7 +152,7 @@ mod test {
         }
     }
 
-    #[test] 
+    #[test]
     fn with_one_full_check_and_one_level_of_recursions_every_bit_has_all_adjacent_bits() {
         let mut adjacency = Adjacency::with_n_bits(5);
         adjacency.set_recursion_depth(1);
@@ -163,7 +166,7 @@ mod test {
     fn with_few_checks_and_two_level_of_recursions_every_bit_has_some_adjacent_bits() {
         let mut adjacency = Adjacency::with_n_bits(6);
         adjacency.set_recursion_depth(2);
-        
+
         adjacency.update_from_check(&[0, 1]);
         adjacency.update_from_check(&[2, 3]);
         adjacency.update_from_check(&[1, 2, 4]);

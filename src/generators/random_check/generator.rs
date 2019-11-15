@@ -17,7 +17,7 @@ pub struct Generator {
 }
 
 impl Generator {
-    // ************ 
+    // ************
     // Construction
     // ************
 
@@ -119,7 +119,6 @@ impl Generator {
         self.set_adjacency(n_bits);
     }
 
-
     pub fn with_distribution(&mut self, probs: Vec<f64>) -> &mut Self {
         if probs.len() != self.get_n_bits() {
             panic!("wrong number of probabilities");
@@ -183,9 +182,7 @@ mod test {
     fn doesnt_include_same_bit_twice() {
         let mut rng = ChaCha8Rng::seed_from_u64(10);
 
-        let mut generator = Generator::new()
-            .with_n_bits(3)
-            .with_max_bit_degrees(2);
+        let mut generator = Generator::new().with_n_bits(3).with_max_bit_degrees(2);
 
         let first_check = generator.over_bits(vec![0, 1]).generate(2, &mut rng);
         assert_eq!(first_check, Some(vec![0, 1]));
@@ -199,9 +196,7 @@ mod test {
     fn doesnt_exceed_bit_maximal_degree() {
         let mut rng = ChaCha8Rng::seed_from_u64(10);
 
-        let mut generator = Generator::new()
-            .with_n_bits(3)
-            .with_max_bit_degrees(2);
+        let mut generator = Generator::new().with_n_bits(3).with_max_bit_degrees(2);
 
         let first_check = generator.without(&[2]).generate(2, &mut rng);
         assert_eq!(first_check, Some(vec![0, 1]));
@@ -272,10 +267,8 @@ mod test {
     fn generate_bit_according_to_distribution() {
         let mut rng = ChaCha8Rng::seed_from_u64(10);
 
-        let mut generator = Generator::new()
-            .with_n_bits(5)
-            .with_max_bit_degrees(2);
-            
+        let mut generator = Generator::new().with_n_bits(5).with_max_bit_degrees(2);
+
         generator
             .with_distribution(vec![0.25, 0.25, 0.0, 0.25, 0.25])
             .over_bits(vec![0, 1, 2]);
