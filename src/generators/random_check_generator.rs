@@ -6,10 +6,10 @@ use std::collections::{BTreeMap, BTreeSet};
 /// constraints.
 ///
 /// Constraints are bit and check degrees and minimal girth. A `RandomCheckGenerator` is consumed
-/// while generating checks and need to be reset before being use to generate checks for a other
+/// while generating checks and need to be reset before being use to generate checks for another
 /// code.
 pub struct RandomCheckGenerator {
-    max_bit_degrees: Vec<usize>,
+    max_bit_degrees: usize,
     bit_degrees: Vec<usize>,
     adjacencies: Vec<BTreeSet<usize>>,
     adjacency_depth: usize,
@@ -36,17 +36,53 @@ impl RandomCheckGenerator {
 
     pub fn new() -> Self {
         Self {
-            max_bit_degrees,
-            bit_degrees: vec![0; n_bits],
-            adjacency_depth: minimal_girth / 2,
-            adjacencies: (0..n_bits).map(|b| [b].iter().cloned().collect()).collect(),
-            active_bits: (0..n_bits).collect(),
-            distribution: vec![1.0 / n_bits as f64; n_bits],
+            max_bit_degrees: 0,
+            bit_degrees: Vec::new(),
+            adjacency_depth: 0,
+            adjacencies: Vec::new(),
+            active_bits: Vec::new(),
+            distribution: Vec::new(),
         }
     }
 
-    pub fn with_degrees(mut self, degrees: BitAndCheckDegrees) -> Self {
+    pub fn with_max_bit_degrees(mut self, degrees: usize) -> Self {
+        self.max_bit_degrees = degrees;
+        self
+    }
 
+    pub fn with_minimal_girth(mut self, girth: usize) -> Self {
+        self.adjacency_depth = girth / 2;
+        self
+    }
+
+    pub fn with_n_bits(mut self, n_bits: usize) -> Self {
+        self.set_bit_degrees(n_bits);
+        self.set_adjacencies(n_bits);
+        self.set_active_bits(n_bits);
+        self.set_distribution(n_bits);
+        self
+    }
+
+    fn set_bit_degrees(&mut self, n_bits: usize) {
+        self.bit_degrees = vec![0; n_bits];
+    }
+
+    fn set_adjacencies(&mut self, n_bits: usize) {
+        self.adjacencies = (0..n_bits)
+            .map(|b| {
+                let mut set = BTreeSet::new();
+                set.insert(b);
+                set
+            })
+            .collect();
+    }
+
+    fn set_active_bits(&mut self, n_bits: usize) {
+        self.active_bits = (0..n_bits).collect();
+    }
+
+    fn set_distribution(&mut self, n_bits: usize) {
+        self.distribution = vec![1.0 / n_bits as f64; n_bits];
     }
 
     // **************
@@ -79,7 +115,7 @@ impl RandomCheckGenerator {
         for _ in 0..check_degree {
             self.add_random_bit_to_check(&mut check, rng);
         }
-        if check.len() == check_degree {
+        if check.len() >= 2 {
             self.update_adjacency(&check);
             check.iter().for_each(|bit| self.bit_degrees[*bit] += 1);
             check.sort();
@@ -142,7 +178,7 @@ impl RandomCheckGenerator {
         let availables: Vec<usize> = self
             .active_bits
             .iter()
-            .filter(|bit| self.bit_degrees[**bit] < self.max_bit_degrees[**bit])
+            .filter(|bit| self.bit_degrees[**bit] < self.max_bit_degrees)
             .filter(|bit| check.iter().all(|b| self.are_not_adjacent(b, bit)))
             .cloned()
             .collect();
@@ -197,7 +233,10 @@ mod test {
         let mut rng = ChaCha8Rng::seed_from_u64(10);
 
         // A 15 bit check generator with minimal girth 6;
-        let mut generator = RandomCheckGenerator::new(vec![3; 15], 6);
+        let mut generator = RandomCheckGenerator::new()
+            .with_max_bit_degrees(3)
+            .with_n_bits(6)
+            .with_minimal_girth(6);
 
         // Each bit is adjacent to itself.
         (0..15).for_each(|b| assert_eq!(generator.adjacent_to(b), vec![b]));
@@ -246,7 +285,10 @@ mod test {
     fn doesnt_include_same_bit_twice() {
         let mut rng = ChaCha8Rng::seed_from_u64(10);
 
-        let mut generator = RandomCheckGenerator::new(vec![2, 2, 2], 0);
+        let mut generator = RandomCheckGenerator::new()
+            .with_n_bits(3)
+            .with_max_bit_degrees(2);
+
         let first_check = generator.over_bits(vec![0, 1]).generate(2, &mut rng);
         assert_eq!(first_check, Some(vec![0, 1]));
 
@@ -259,7 +301,9 @@ mod test {
     fn doesnt_exceed_bit_maximal_degree() {
         let mut rng = ChaCha8Rng::seed_from_u64(10);
 
-        let mut generator = RandomCheckGenerator::new(vec![2, 2, 2], 0);
+        let mut generator = RandomCheckGenerator::new()
+            .with_n_bits(3)
+            .with_max_bit_degrees(2);
 
         let first_check = generator.without(&[2]).generate(2, &mut rng);
         assert_eq!(first_check, Some(vec![0, 1]));
@@ -288,7 +332,10 @@ mod test {
         let mut rng = ChaCha8Rng::seed_from_u64(10);
 
         // Minimal girth 6
-        let mut generator = RandomCheckGenerator::new(vec![2, 2, 2], 6);
+        let mut generator = RandomCheckGenerator::new()
+            .with_n_bits(3)
+            .with_max_bit_degrees(2)
+            .with_minimal_girth(6);
 
         let first_check = generator.generate(3, &mut rng);
         assert_eq!(first_check, Some(vec![0, 1, 2]));
@@ -302,7 +349,10 @@ mod test {
         assert_eq!(third_check.is_some(), true);
 
         // Minimal girth 8
-        let mut generator = RandomCheckGenerator::new(vec![2; 5], 8);
+        let mut generator = RandomCheckGenerator::new()
+            .with_n_bits(5)
+            .with_max_bit_degrees(2)
+            .with_minimal_girth(8);
 
         let first_check = generator.over_bits(vec![0, 1, 2]).generate(3, &mut rng);
         assert_eq!(first_check, Some(vec![0, 1, 2]));
@@ -324,7 +374,10 @@ mod test {
     fn generate_bit_according_to_distribution() {
         let mut rng = ChaCha8Rng::seed_from_u64(10);
 
-        let mut generator = RandomCheckGenerator::new(vec![2; 5], 0);
+        let mut generator = RandomCheckGenerator::new()
+            .with_n_bits(5)
+            .with_max_bit_degrees(2);
+            
         generator
             .with_distribution(vec![0.25, 0.25, 0.0, 0.25, 0.25])
             .over_bits(vec![0, 1, 2]);

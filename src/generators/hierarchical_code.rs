@@ -1,13 +1,14 @@
-use super::{CodeGenerator, RandomCheckGenerator, BitAndCheckDegrees};
+use super::{CodeGenerator, RandomCheckGenerator};
 use crate::ParityCheckMatrix;
 use rand::Rng;
 
 pub struct HierarchicalCodeGeneratorBuilder {
-    degrees: BitAndCheckDegrees,
-    n_layers: Option<u32>,
-    initial_block_length: Option<u32>,
-    n_checks_per_block: Option<u32>,
-    n_blocks_per_layer: Option<u32>,
+    bit_degree: usize,
+    check_degree: usize,
+    n_layers: Option<usize>,
+    initial_block_length: Option<usize>,
+    n_checks_per_block: Option<usize>,
+    n_blocks_per_layer: Option<usize>,
 }
 
 impl HierarchicalCodeGeneratorBuilder {
@@ -15,9 +16,10 @@ impl HierarchicalCodeGeneratorBuilder {
     // Construction
     // ************
 
-    pub fn new(degrees: BitAndCheckDegrees) -> Self {
+    pub fn new() -> Self {
         Self {
-            degrees,
+            bit_degree: 0,
+            check_degree: 0,
             n_layers: None,
             initial_block_length: None,
             n_checks_per_block: None,
@@ -25,22 +27,28 @@ impl HierarchicalCodeGeneratorBuilder {
         }        
     }
 
-    pub fn with_n_layers(mut self, n_layers: u32) -> Self {
+    pub fn with_bit_and_check_degree(mut self, bit_degree: usize, check_degree: usize) -> Self {
+        self.bit_degree = bit_degree;
+        self.check_degree = check_degree;
+        self
+    }
+
+    pub fn with_n_layers(mut self, n_layers: usize) -> Self {
         self.n_layers = Some(n_layers);
         self
     }
 
-    pub fn with_initial_block_length(mut self, length: u32) -> Self {
+    pub fn with_initial_block_length(mut self, length: usize) -> Self {
         self.initial_block_length = Some(length);
         self
     }
 
-    pub fn with_n_checks_per_block(mut self, n_checks: u32) -> Self {
+    pub fn with_n_checks_per_block(mut self, n_checks: usize) -> Self {
         self.n_checks_per_block = Some(n_checks);
         self
     }
 
-    pub fn with_n_blocks_per_layer(mut self, n_blocks: u32) -> Self {
+    pub fn with_n_blocks_per_layer(mut self, n_blocks: usize) -> Self {
         self.n_blocks_per_layer = Some(n_blocks);
         self
     }
@@ -51,7 +59,8 @@ impl HierarchicalCodeGeneratorBuilder {
 
     pub fn build(&self) -> HierarchicalCodeGenerator {
         HierarchicalCodeGenerator {
-            degrees: self.degrees,
+            bit_degree: self.bit_degree,
+            check_degree: self.check_degree,
             n_layers: self.get_n_layers(),
             initial_block_length: self.get_initial_block_length(),
             n_checks_per_block: self.get_n_checks_per_block(),
@@ -59,30 +68,31 @@ impl HierarchicalCodeGeneratorBuilder {
         }
     }
 
-    fn get_n_layers(&self) -> u32 {
+    fn get_n_layers(&self) -> usize {
         self.n_layers.unwrap_or(1)
     }
 
-    fn get_initial_block_length(&self) -> u32 {
-        self.initial_block_length.unwrap_or(self.degrees.get_check_degrees())
+    fn get_initial_block_length(&self) -> usize {
+        self.initial_block_length.unwrap_or(self.check_degree)
     }
 
-    fn get_n_checks_per_block(&self) -> u32 {
+    fn get_n_checks_per_block(&self) -> usize {
         self.n_checks_per_block.unwrap_or(1)
     }
 
-    fn get_n_blocks_for_layer(&self) -> u32 {
+    fn get_n_blocks_for_layer(&self) -> usize {
         self.n_blocks_per_layer.unwrap_or(1)
     }
 }
 
 
 pub struct HierarchicalCodeGenerator {
-    degrees: BitAndCheckDegrees,
-    n_layers: u32,
-    initial_block_length: u32,
-    n_checks_per_block: u32,
-    n_blocks_per_layer: u32,
+    bit_degree: usize,
+    check_degree: usize,
+    n_layers: usize,
+    initial_block_length: usize,
+    n_checks_per_block: usize,
+    n_blocks_per_layer: usize,
 }
 
 impl HierarchicalCodeGenerator {
@@ -100,7 +110,8 @@ impl HierarchicalCodeGenerator {
     /// ```
     pub fn new() -> Self {
         Self {
-            degrees: BitAndCheckDegrees::new(0, 0),
+            bit_degree: 0,
+            check_degree: 0,
             n_layers: 1,
             initial_block_length: 0,
             n_checks_per_block: 1,
@@ -113,7 +124,8 @@ impl HierarchicalCodeGenerator {
     // *********************
 
     fn will_generate_an_empty_code(&self) -> bool {
-        self.degrees.will_generate_an_empty_code()
+        self.bit_degree == 0
+            || self.check_degree == 0
             || self.n_layers == 0
             || self.initial_block_length == 0
             || self.n_checks_per_block == 0
@@ -130,13 +142,14 @@ impl HierarchicalCodeGenerator {
     }
 
     fn initialize_check_generator(&self) -> RandomCheckGenerator {
-        let bit_degrees = vec![self.degrees.get_bit_degrees() as usize; self.get_n_bits()];
-        RandomCheckGenerator::new(bit_degrees, 0)
+        RandomCheckGenerator::new()
+            .with_n_bits(self.get_n_bits())
+            .with_max_bit_degrees(self.bit_degree)
     }
 
     fn generate_layer_checks<R: Rng + ?Sized>(
         &self, 
-        layer: u32, 
+        layer: usize, 
         check_generator: &mut RandomCheckGenerator,
         rng: &mut R
     ) -> Vec<Vec<usize>> {
@@ -147,7 +160,7 @@ impl HierarchicalCodeGenerator {
             .collect()
     }
 
-    fn get_blocks_for_layer(&self, layer: u32) -> Vec<Vec<usize>> {
+    fn get_blocks_for_layer(&self, layer: usize) -> Vec<Vec<usize>> {
         let n_blocks = self.get_n_blocks_for_layer(layer);
         let block_length = self.get_block_length_for_layer(layer);
         (0..n_blocks).map(|block| {
@@ -156,12 +169,12 @@ impl HierarchicalCodeGenerator {
         .collect()
     }
 
-    fn get_n_blocks_for_layer(&self, layer: u32) -> usize
+    fn get_n_blocks_for_layer(&self, layer: usize) -> usize
      {
-        self.n_blocks_per_layer.pow(self.n_layers - layer) as usize
+        self.n_blocks_per_layer.pow((self.n_layers - layer) as u32)
     }
 
-    fn get_block_length_for_layer(&self, layer: u32) -> usize {
+    fn get_block_length_for_layer(&self, layer: usize) -> usize {
         self.get_n_bits() / self.get_n_blocks_for_layer(layer) as usize
     }
 
@@ -174,7 +187,7 @@ impl HierarchicalCodeGenerator {
         check_generator.over_bits(block);
         (0..self.n_checks_per_block)
             .filter_map(|_| {
-                check_generator.generate(self.degrees.get_check_degrees() as usize, rng)
+                check_generator.generate(self.check_degree as usize, rng)
             })
             .collect()
     }
@@ -184,11 +197,11 @@ impl HierarchicalCodeGenerator {
     // *********
 
     pub fn get_n_bits(&self) -> usize {
-        self.initial_block_length.pow(self.n_layers) as usize
+        self.initial_block_length.pow(self.n_layers as u32)
     }
 
     pub fn get_n_checks(&self) -> usize {
-        self.n_checks_per_block.pow(self.n_layers) as usize
+        self.n_checks_per_block.pow(self.n_layers as u32) as usize
     }
 }
 
@@ -205,7 +218,6 @@ impl CodeGenerator for HierarchicalCodeGenerator {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::BitAndCheckDegrees;
     use rand::{SeedableRng, thread_rng};
     use rand_chacha::ChaCha8Rng;
 
@@ -217,8 +229,9 @@ mod test {
 
     #[test]
     fn generate_single_check_code() {
-        let degrees = BitAndCheckDegrees::new(3, 4);
-        let generator = HierarchicalCodeGeneratorBuilder::new(degrees).build();
+        let generator = HierarchicalCodeGeneratorBuilder::new()
+            .with_bit_and_check_degree(3, 4)
+            .build();
 
         let expected_code = ParityCheckMatrix::with_n_bits(4).with_checks(vec![vec![0, 1, 2, 3]]);
         assert_eq!(generator.generate(&mut thread_rng()), expected_code);
@@ -226,8 +239,8 @@ mod test {
 
     #[test]
     fn generate_single_layer_code() {
-        let degrees = BitAndCheckDegrees::new(3, 3);
-        let generator = HierarchicalCodeGeneratorBuilder::new(degrees)
+        let generator = HierarchicalCodeGeneratorBuilder::new()
+            .with_bit_and_check_degree(3, 3)
             .with_initial_block_length(8)
             .with_n_checks_per_block(6)
             .build();
