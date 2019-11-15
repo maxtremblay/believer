@@ -32,7 +32,7 @@ impl Generator {
     }
 
     pub fn with_minimal_girth(mut self, girth: usize) -> Self {
-        self.adjacency.set_recursion_depth_from_girth(girth);
+        self.adjacency.set_recursion_depth(girth / 2);
         self
     }
 
@@ -43,7 +43,7 @@ impl Generator {
 
     pub fn with_n_bits(mut self, n_bits: usize) -> Self {
         self.set_bit_degrees(n_bits);
-        self.adjacency.initialize_adjacencies(n_bits);
+        self.set_adjacency(n_bits);
         self.set_active_bits(n_bits);
         self.set_distribution(n_bits);
         self
@@ -51,6 +51,10 @@ impl Generator {
 
     fn set_bit_degrees(&mut self, n_bits: usize) {
         self.bit_degrees = vec![0; n_bits];
+    }
+
+    fn set_adjacency(&mut self, n_bits: usize) {
+        self.adjacency = Adjacency::with_n_bits(n_bits);
     }
 
     fn set_active_bits(&mut self, n_bits: usize) {
@@ -110,8 +114,9 @@ impl Generator {
     }
 
     pub fn reset(&mut self) {
-        self.set_bit_degrees(self.get_n_bits());
-        self.adjacency.initialize_adjacencies(self.get_n_bits());
+        let n_bits = self.get_n_bits();
+        self.set_bit_degrees(n_bits);
+        self.set_adjacency(n_bits);
     }
 
 
@@ -165,5 +170,132 @@ impl Generator {
 
     fn update_adjacency_from_check(&mut self, check: &[usize]) {
         self.adjacency.update_from_check(check)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use rand::SeedableRng;
+    use rand_chacha::ChaCha8Rng;
+
+    #[test]
+    fn doesnt_include_same_bit_twice() {
+        let mut rng = ChaCha8Rng::seed_from_u64(10);
+
+        let mut generator = Generator::new()
+            .with_n_bits(3)
+            .with_max_bit_degrees(2);
+
+        let first_check = generator.over_bits(vec![0, 1]).generate(2, &mut rng);
+        assert_eq!(first_check, Some(vec![0, 1]));
+
+        // Can't generate a degree 4 check over only 2 bits.
+        let second_check = generator.generate(4, &mut rng);
+        assert_eq!(second_check, None);
+    }
+
+    #[test]
+    fn doesnt_exceed_bit_maximal_degree() {
+        let mut rng = ChaCha8Rng::seed_from_u64(10);
+
+        let mut generator = Generator::new()
+            .with_n_bits(3)
+            .with_max_bit_degrees(2);
+
+        let first_check = generator.without(&[2]).generate(2, &mut rng);
+        assert_eq!(first_check, Some(vec![0, 1]));
+
+        let second_check = generator
+            .over_all_bits()
+            .without(&[0])
+            .generate(2, &mut rng);
+        assert_eq!(second_check, Some(vec![1, 2]));
+
+        // We already have checks [0,1] and [1, 2]. Degree of bit 1 is 2 and it can't
+        // be included in another check.
+
+        let third_check = generator.over_all_bits().generate(3, &mut rng);
+        assert_eq!(third_check, None);
+
+        let fourth_check = generator.generate(2, &mut rng);
+        assert_eq!(fourth_check, Some(vec![0, 2]));
+
+        // Every bit has max degree. Can't generate anymore check
+        assert_eq!(generator.generate(1, &mut rng), None);
+    }
+
+    #[test]
+    fn doesnt_create_cycle_smaller_than_minimal_girth() {
+        let mut rng = ChaCha8Rng::seed_from_u64(10);
+
+        // Minimal girth 6
+        let mut generator = Generator::new()
+            .with_n_bits(3)
+            .with_max_bit_degrees(2)
+            .with_minimal_girth(6);
+
+        let first_check = generator.generate(3, &mut rng);
+        assert_eq!(first_check, Some(vec![0, 1, 2]));
+
+        // Any check of degree 2 will create a 4-cycle.
+        let second_check = generator.generate(2, &mut rng);
+        assert_eq!(second_check, None);
+
+        // A degree 1 check will not create a 4-cycle.
+        let third_check = generator.generate(1, &mut rng);
+        assert_eq!(third_check.is_some(), true);
+
+        // Minimal girth 8
+        let mut generator = Generator::new()
+            .with_n_bits(5)
+            .with_max_bit_degrees(2)
+            .with_minimal_girth(8);
+
+        let first_check = generator.over_bits(vec![0, 1, 2]).generate(3, &mut rng);
+        assert_eq!(first_check, Some(vec![0, 1, 2]));
+
+        let second_check = generator.over_bits(vec![2, 3]).generate(2, &mut rng);
+        assert_eq!(second_check, Some(vec![2, 3]));
+
+        // A check over [0, 3] will create a 6-cycle.
+        let third_check = generator.over_bits(vec![0, 3]).generate(2, &mut rng);
+        assert_eq!(third_check, None);
+
+        // Possible checks are [0, 4] or [3, 4]
+        let fourth_check = generator.over_bits(vec![0, 3, 4]).generate(2, &mut rng);
+        assert_eq!(fourth_check.clone().unwrap().contains(&4), true);
+        assert_eq!(fourth_check.unwrap().len(), 2);
+    }
+
+    #[test]
+    fn generate_bit_according_to_distribution() {
+        let mut rng = ChaCha8Rng::seed_from_u64(10);
+
+        let mut generator = Generator::new()
+            .with_n_bits(5)
+            .with_max_bit_degrees(2);
+            
+        generator
+            .with_distribution(vec![0.25, 0.25, 0.0, 0.25, 0.25])
+            .over_bits(vec![0, 1, 2]);
+
+        // Can't generate 3 bits from this distribution over the first 3.
+        assert_eq!(generator.generate(3, &mut rng), None);
+        assert_eq!(generator.generate(2, &mut rng), Some(vec![0, 1]));
+        assert_eq!(generator.generate(2, &mut rng), Some(vec![0, 1]));
+
+        // Degree of the first 2 bits is 2.
+        assert_eq!(generator.generate(2, &mut rng), None);
+
+        generator.over_all_bits();
+        assert_eq!(generator.generate(2, &mut rng), Some(vec![3, 4]));
+
+        // Can't pick a degree 3 check because probability of bit 2 is 0.
+        assert_eq!(generator.generate(3, &mut rng), None);
+
+        // Reset distribution.
+        generator.with_uniform_distribution();
+        assert_eq!(generator.generate(3, &mut rng), Some(vec![2, 3, 4]));
     }
 }

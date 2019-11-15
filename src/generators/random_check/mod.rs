@@ -1,4 +1,4 @@
-pub mod adjacency;
+mod adjacency;
 
 pub mod generator;
 pub use generator::Generator;

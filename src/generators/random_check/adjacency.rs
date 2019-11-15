@@ -1,5 +1,10 @@
 use std::collections::{BTreeMap, BTreeSet};
 
+// A tool for random check generator that prevent cycle smaller than the minimal girth during code
+// construction.
+//
+// It keeps track of the adjacencies of every bit. Two bits are adjacent if creating a new check
+// containing both of them would create a cycle smaller than the minimal girth. 
 pub(super) struct Adjacency {
     adjacencies: Vec<BTreeSet<usize>>,
     recursion_depth: usize,
@@ -11,23 +16,30 @@ impl Adjacency {
 
     pub(super) fn new() -> Self {
         Self {
-            recursion_depth: 0,
             adjacencies: Vec::new(),
+            recursion_depth: 0,
         }
     }
 
-    pub(super) fn initialize_adjacencies(&mut self, n_bits: usize) {
-        self.adjacencies = (0..n_bits)
+    pub(super) fn with_n_bits(n_bits: usize) -> Self {
+        Self {
+            adjacencies: Self::initialize_adjacencies_with_n_bits(n_bits),
+            recursion_depth: 0,
+        }
+    }
+
+    fn initialize_adjacencies_with_n_bits(n_bits: usize) -> Vec<BTreeSet<usize>> {
+        (0..n_bits)
             .map(|b| {
                 let mut set = BTreeSet::new();
                 set.insert(b);
                 set
             })
-            .collect();
+            .collect()
     }
 
-    pub(super) fn set_recursion_depth_from_girth(&mut self, girth: usize) {
-        self.recursion_depth = girth / 2;
+    pub(super) fn set_recursion_depth(&mut self, depth: usize) {
+        self.recursion_depth = depth;
     }
 
     // ***** Get adjacent bits *****
@@ -104,10 +116,64 @@ impl<'a> AdjacentBitsGetter<'a> {
     }
 
     fn has_not_been_set_with_depth(&self, bit: &usize, depth: usize) -> bool {
-        self.adjacent_bits[bit] <= depth
+        self.adjacent_bits
+            .get(bit)
+            .map(|last_set_depth| *last_set_depth <= depth)
+            .unwrap_or(true)
     }
 
     fn get_adjacent_bits_as_vec(&self) -> Vec<usize> {
         self.adjacent_bits.keys().cloned().collect()
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn without_recursion_every_bit_is_adjancent_only_to_itself() {
+        let mut adjacency = Adjacency::with_n_bits(5);
+        adjacency.update_from_check(&[0, 1, 2, 3, 4]);
+        for bit in 0..5 {
+            assert_eq!(adjacency.get_bits_adjacent_to(bit), vec![bit]);
+        }
+    }
+
+    #[test] 
+    fn without_check_every_bit_is_adjacent_only_to_itself() {
+        let mut adjacency = Adjacency::with_n_bits(5);
+        adjacency.set_recursion_depth(10);
+        for bit in 0..5 {
+            assert_eq!(adjacency.get_bits_adjacent_to(bit), vec![bit]);
+        }
+    }
+
+    #[test] 
+    fn with_one_full_check_and_one_level_of_recursions_every_bit_has_all_adjacent_bits() {
+        let mut adjacency = Adjacency::with_n_bits(5);
+        adjacency.set_recursion_depth(1);
+        adjacency.update_from_check(&[0, 1, 2, 3, 4]);
+        for bit in 0..5 {
+            assert_eq!(adjacency.get_bits_adjacent_to(bit), vec![0, 1, 2, 3, 4]);
+        }
+    }
+
+    #[test]
+    fn with_few_checks_and_two_level_of_recursions_every_bit_has_some_adjacent_bits() {
+        let mut adjacency = Adjacency::with_n_bits(6);
+        adjacency.set_recursion_depth(2);
+        
+        adjacency.update_from_check(&[0, 1]);
+        adjacency.update_from_check(&[2, 3]);
+        adjacency.update_from_check(&[1, 2, 4]);
+        adjacency.update_from_check(&[3, 5]);
+
+        assert_eq!(adjacency.get_bits_adjacent_to(0), vec![0, 1, 2, 4]);
+        assert_eq!(adjacency.get_bits_adjacent_to(1), vec![0, 1, 2, 3, 4]);
+        assert_eq!(adjacency.get_bits_adjacent_to(2), vec![0, 1, 2, 3, 4, 5]);
+        assert_eq!(adjacency.get_bits_adjacent_to(3), vec![1, 2, 3, 4, 5]);
+        assert_eq!(adjacency.get_bits_adjacent_to(4), vec![0, 1, 2, 3, 4]);
+        assert_eq!(adjacency.get_bits_adjacent_to(5), vec![2, 3, 5]);
     }
 }
