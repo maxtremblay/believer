@@ -18,6 +18,37 @@ pub struct RandomCheckGenerator {
 }
 
 impl RandomCheckGenerator {
+    // ************ 
+    // Construction
+    // ************
+
+    // pub fn new(max_bit_degrees: Vec<usize>, minimal_girth: usize) -> Self {
+    //     let n_bits = max_bit_degrees.len();
+    //     Self {
+    //         max_bit_degrees,
+    //         bit_degrees: vec![0; n_bits],
+    //         adjacency_depth: minimal_girth / 2,
+    //         adjacencies: (0..n_bits).map(|b| [b].iter().cloned().collect()).collect(),
+    //         active_bits: (0..n_bits).collect(),
+    //         distribution: vec![1.0 / n_bits as f64; n_bits],
+    //     }
+    // }
+
+    pub fn new() -> Self {
+        Self {
+            max_bit_degrees,
+            bit_degrees: vec![0; n_bits],
+            adjacency_depth: minimal_girth / 2,
+            adjacencies: (0..n_bits).map(|b| [b].iter().cloned().collect()).collect(),
+            active_bits: (0..n_bits).collect(),
+            distribution: vec![1.0 / n_bits as f64; n_bits],
+        }
+    }
+
+    pub fn with_degrees(mut self, degrees: BitAndCheckDegrees) -> Self {
+
+    }
+
     // **************
     // Public methods
     // **************
@@ -60,18 +91,6 @@ impl RandomCheckGenerator {
 
     pub fn n_bits(&self) -> usize {
         self.bit_degrees.len()
-    }
-
-    pub fn new(max_bit_degrees: Vec<usize>, minimal_girth: usize) -> Self {
-        let n_bits = max_bit_degrees.len();
-        Self {
-            max_bit_degrees,
-            bit_degrees: vec![0; n_bits],
-            adjacency_depth: minimal_girth / 2,
-            adjacencies: (0..n_bits).map(|b| [b].iter().cloned().collect()).collect(),
-            active_bits: (0..n_bits).collect(),
-            distribution: vec![1.0 / n_bits as f64; n_bits],
-        }
     }
 
     pub fn over_all_bits(&mut self) -> &mut Self {
