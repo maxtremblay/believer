@@ -132,7 +132,7 @@ impl HierarchicalCodeGenerator {
             || self.n_blocks_per_layer == 0
     }
 
-    fn generate_non_empty_code<R: Rng + ?Sized>(&self, rng: &mut R) -> ParityCheckMatrix {
+    fn generate_non_empty_code<R: Rng>(&self, rng: &mut R) -> ParityCheckMatrix {
         let mut check_generator = self.initialize_check_generator();
         let mut checks = Vec::with_capacity(self.get_n_checks());
         for layer in 0..self.n_layers {
@@ -142,12 +142,12 @@ impl HierarchicalCodeGenerator {
     }
 
     fn initialize_check_generator(&self) -> RandomCheckGenerator {
-        RandomCheckGenerator::new()
-            .with_n_bits(self.get_n_bits())
-            .with_max_bit_degrees(self.bit_degree)
+        let mut generator = RandomCheckGenerator::with_n_bits(self.get_n_bits());
+        generator.set_maximal_bit_degree(self.bit_degree);
+        generator
     }
 
-    fn generate_layer_checks<R: Rng + ?Sized>(
+    fn generate_layer_checks<R: Rng>(
         &self,
         layer: usize,
         check_generator: &mut RandomCheckGenerator,
@@ -180,15 +180,15 @@ impl HierarchicalCodeGenerator {
         self.get_n_bits() / self.get_n_blocks_for_layer(layer) as usize
     }
 
-    fn generate_checks_on_block<R: Rng + ?Sized>(
+    fn generate_checks_on_block<R: Rng>(
         &self,
         block: Vec<usize>,
         check_generator: &mut RandomCheckGenerator,
         rng: &mut R,
     ) -> Vec<Vec<usize>> {
-        check_generator.over_bits(block);
+        check_generator.set_over_bits(block);
         (0..self.n_checks_per_block)
-            .filter_map(|_| check_generator.generate(self.check_degree as usize, rng))
+            .filter_map(|_| check_generator.get_random_check(self.check_degree as usize, rng))
             .collect()
     }
 
@@ -206,7 +206,7 @@ impl HierarchicalCodeGenerator {
 }
 
 impl CodeGenerator for HierarchicalCodeGenerator {
-    fn generate<R: Rng + ?Sized>(&self, rng: &mut R) -> ParityCheckMatrix {
+    fn generate<R: Rng>(&self, rng: &mut R) -> ParityCheckMatrix {
         if self.will_generate_an_empty_code() {
             ParityCheckMatrix::empty()
         } else {
