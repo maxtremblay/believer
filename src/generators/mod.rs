@@ -36,11 +36,11 @@ pub trait CodeGenerator {
 
 pub mod random_check;
 
-pub mod regular_ldpc;
-pub use regular_ldpc::*;
+// pub mod regular_ldpc;
+// pub use regular_ldpc::*;
 
-pub mod hierarchical_code;
-pub use hierarchical_code::*;
+// pub mod hierarchical_code;
+// pub use hierarchical_code::*;
 
-pub mod increasing_range_code;
-pub use increasing_range_code::*;
+// pub mod increasing_range_code;
+// pub use increasing_range_code::*;
