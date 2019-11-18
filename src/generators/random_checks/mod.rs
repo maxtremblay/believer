@@ -1,4 +1,4 @@
-//! A generator for random checks is a tool to generator checks for code construction.
+//! A tool to generate checks for code construction.
 mod adjacency;
 
 pub mod generator;
