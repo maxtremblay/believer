@@ -145,7 +145,10 @@ impl<C: BinaryChannel> BPDecoder<C> {
         let intrinsec = self.channel.message_likelyhood(message);
         let total = intrinsec.clone();
         let extrinsec =
-            SparseMatrix::from_parity_check(&self.parity_check, vec![0.0; self.parity_check.len()]);
+            SparseMatrix::from_parity_check(
+                &self.parity_check, 
+                vec![0.0; self.parity_check.get_n_edges()]
+            );
         Likelyhoods {
             decoder: &self,
             total,
@@ -228,7 +231,7 @@ impl<C: BinaryChannel> Decoder for BPDecoder<C> {
     }
 
     fn take_checks(&mut self) -> Self::Checks {
-        std::mem::replace(&mut self.parity_check, ParityCheckMatrix::empty())
+        std::mem::replace(&mut self.parity_check, ParityCheckMatrix::new())
     }
 }
 
@@ -370,7 +373,8 @@ mod test {
     fn repetition_code() {
         // Tests with a 3 bits repetition code over a bsc with error probability of 0.2.
         let channel = BinarySymmetricChannel::new(0.2);
-        let parity_check = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2]], 3);
+        let parity_check = ParityCheckMatrix::with_n_bits(3)
+            .with_checks(vec![vec![0, 1], vec![1, 2]]);
         let decoder = BPDecoder::new(channel, parity_check, 5);
 
         // Should decode 1 error.
@@ -386,10 +390,8 @@ mod test {
         let channel = BinarySymmetricChannel::new(0.2);
         let max_iters = 10;
         let builder = BPDecoderBuilder::new(channel, max_iters);
-        let checks = ParityCheckMatrix::new(
-            vec![vec![0, 1, 2, 4], vec![0, 1, 3, 5], vec![0, 2, 3, 6]],
-            7,
-        );
+        let checks = ParityCheckMatrix::with_n_bits(7)
+            .with_checks(vec![vec![0, 1, 2, 4], vec![0, 1, 3, 5], vec![0, 2, 3, 6]]);
         let decoder = builder.build_from(checks);
 
         // Should decode no error
@@ -431,7 +433,7 @@ mod test {
     #[test]
     fn get_stuck_in_cycle() {
         let channel = BinarySymmetricChannel::new(0.2);
-        let parity_check = ParityCheckMatrix::new(vec![vec![0, 1]], 2);
+        let parity_check = ParityCheckMatrix::with_n_bits(2).with_checks(vec![vec![0, 1]]);
         let decoder = BPDecoder::new(channel, parity_check, 10);
 
         assert_eq!(decoder.decode(&vec![GF2::B0, GF2::B1]), BPResult::GotStuck);

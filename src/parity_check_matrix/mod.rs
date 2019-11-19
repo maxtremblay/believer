@@ -1,18 +1,24 @@
 //! A sparse implementation of a parity check matrix.
 
-use super::Check;
 use crate::GF2;
 use itertools::EitherOrBoth::{Both, Left, Right};
 use itertools::Itertools;
-use std::cmp::Ordering;
-use std::cmp::{max, min};
-use std::ops::{Add, Mul};
+use std::ops::Add;
 
-// *******************
-// Parity Check Matrix
-// *******************
+pub mod check_view;
+pub use check_view::CheckView;
 
-/// A sparse parity check matrix.
+mod transposer;
+use transposer::Transposer;
+
+pub mod check;
+pub use check::{Check, CheckSlice};
+use check::get_bitwise_sum;
+
+mod ranker;
+use ranker::Ranker;
+
+/// A sparse implementation of a parity check matrix.
 #[derive(Debug, PartialEq, Clone)]
 pub struct ParityCheckMatrix {
     check_ranges: Vec<usize>,
@@ -21,25 +27,37 @@ pub struct ParityCheckMatrix {
 }
 
 impl ParityCheckMatrix {
-    // ************
-    // Construction
-    // ************
+    // ***** Construction *****
+
+    /// Creates an empty parity check matrix. That is, a parity check with 0 bit and 0 check.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use believer::ParityCheckMatrix;
+    /// let matrix = ParityCheckMatrix::new();
+    /// ```
+    pub fn new() -> Self {
+        Self {
+            check_ranges: Vec::new(),
+            bit_indices: Vec::new(),
+            n_bits: 0,
+        }
+    }
 
     /// Creates a new `ParityCheckMatrix` with `n_bits` and no checks.
     ///
     /// # Example
     ///
     /// ```
-    /// # use believer::*;
+    /// use believer::ParityCheckMatrix;
     /// let matrix = ParityCheckMatrix::with_n_bits(5);
-    /// assert_eq!(matrix.get_n_bits(), 5);
-    /// assert_eq!(matrix.n_checks(), 0);
     /// ```
     pub fn with_n_bits(n_bits: usize) -> Self {
         Self {
-            check_ranges: vec![],
-            bit_indices: vec![],
-            n_bits,
+            check_ranges: Vec::new(),
+            bit_indices: Vec::new(),
+            n_bits: n_bits,
         }
     }
 
@@ -53,12 +71,11 @@ impl ParityCheckMatrix {
     /// # Example
     ///
     /// ```
-    /// # use believer::*;
+    /// use believer::ParityCheckMatrix;
     /// let checks = vec![vec![0, 1], vec![1, 2]];
     /// let mut matrix = ParityCheckMatrix::with_n_bits(3).with_checks(checks);
-    /// assert_eq!(matrix.n_checks(), 2);
     /// ```
-    pub fn with_checks(mut self, checks: Vec<Vec<usize>>) -> Self {
+    pub fn with_checks(mut self, checks: Vec<Check>) -> Self {
         if self.some_checks_are_out_of_bounds(&checks) {
             panic!("some checks are out of bounds");
         }
@@ -68,71 +85,44 @@ impl ParityCheckMatrix {
         self
     }
 
-    fn some_checks_are_out_of_bounds(&self, checks: &[Vec<usize>]) -> bool {
+    fn some_checks_are_out_of_bounds(&self, checks: &[Check]) -> bool {
         checks.iter().any(|check| self.is_out_of_bounds(check))
     }
 
-    fn is_out_of_bounds(&self, check: &[usize]) -> bool {
-        check
-            .iter()
-            .max()
-            .map(|max| *max >= self.n_bits)
-            .unwrap_or(false)
+    fn is_out_of_bounds(&self, check: CheckSlice) -> bool {
+        check.iter().any(|bit| *bit >= self.n_bits)
     }
 
-    fn init_bit_indices(&mut self, checks: &[Vec<usize>]) {
-        let capacity = checks.iter().fold(0, |acc, check| acc + check.len());
+    fn init_bit_indices(&mut self, checks: &[Check]) {
+        let capacity = checks.iter().map(|check| check.len()).sum();
         self.bit_indices = Vec::with_capacity(capacity)
     }
 
-    fn init_check_ranges(&mut self, checks: &[Vec<usize>]) {
+    fn init_check_ranges(&mut self, checks: &[Check]) {
         self.check_ranges = Vec::with_capacity(checks.len() + 1);
         self.check_ranges.push(0);
     }
 
-    fn fill_with(&mut self, checks: Vec<Vec<usize>>) {
-        checks.into_iter().for_each(|check| {
-            if check.len() > 0 {
-                self.add_check(check);
-            }
-        })
+    fn fill_with(&mut self, checks: Vec<Check>) {
+        checks.into_iter().for_each(|check| if check.len() > 0 { self.add_check(check) });
     }
 
-    fn add_check(&mut self, check: Vec<usize>) {
+    fn add_check(&mut self, check: Check) {
         self.add_check_range(&check);
         self.add_bit_indices(check);
     }
 
-    fn add_check_range(&mut self, check: &[usize]) {
+    fn add_check_range(&mut self, check: CheckSlice) {
         let n_elements_before = self.bit_indices.len();
         self.check_ranges.push(n_elements_before + check.len());
     }
 
-    fn add_bit_indices(&mut self, mut check: Vec<usize>) {
+    fn add_bit_indices(&mut self, mut check: Check) {
         check.sort();
         self.bit_indices.append(&mut check);
     }
 
-    /// Creates a new `ParityCheckMatrix` from a list of `checks` where
-    /// each check is a list of the bits connected to that check and the
-    /// number of bits.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # use::believer::ParityCheckMatrix;
-    /// // The parity check matrix of a 3 bits repetition code.
-    /// let checks = vec![vec![0, 1], vec![1, 2]];
-    /// let n_bits = 3;
-    /// let parity_check = ParityCheckMatrix::new(checks, n_bits);
-    /// ```
-    pub fn new(checks: Vec<Vec<usize>>, n_bits: usize) -> Self {
-        Self::with_n_bits(n_bits).with_checks(checks)
-    }
-
-    // *******
-    // Getters
-    // *******
+    // ***** Getters *****
 
     /// Returns the number of bits in `self`.
     pub fn get_n_bits(&self) -> usize {
@@ -148,28 +138,26 @@ impl ParityCheckMatrix {
         }
     }
 
+    /// Returns the number of edges in `self`.
+    pub fn get_n_edges(&self) -> usize {
+        self.bit_indices.len()
+    }
+
     /// Returns the degree of each bit in `self`.
     ///
     /// # Example
+    /// 
     /// ```
-    /// # use believer::*;
-    /// let checks = ParityCheckMatrix::new(
-    ///     vec![
-    ///         vec![0, 1, 2, 5],
-    ///         vec![1, 3, 4],
-    ///         vec![2, 4, 5],
-    ///         vec![0, 5],
-    ///     ],
-    ///     7,
-    /// );
-    /// assert_eq!(checks.get_bit_degrees(), vec![2, 2, 2, 1, 2, 3, 0]);
+    /// use believer::ParityCheckMatrix;
+    /// 
+    /// let checks = vec![vec![0, 1, 2, 5], vec![1, 3, 4], vec![2, 4, 5], vec![0, 5]];
+    /// let matrix = ParityCheckMatrix::with_n_bits(7).with_checks(checks);
+    /// assert_eq!(matrix.get_bit_degrees(), vec![2, 2, 2, 1, 2, 3, 0]);
     /// ```
     pub fn get_bit_degrees(&self) -> Vec<usize> {
         let mut degrees = vec![0; self.n_bits];
         self.checks_iter().for_each(|check| {
-            check.iter().for_each(|bit| {
-                degrees[*bit] += 1;
-            })
+            check.iter().for_each(|bit| degrees[*bit] += 1)
         });
         degrees
     }
@@ -177,28 +165,117 @@ impl ParityCheckMatrix {
     /// Returns the degree of each check in `self`.
     ///
     /// # Example
+    /// 
     /// ```
-    /// # use believer::*;
-    /// let checks = ParityCheckMatrix::new(
-    ///     vec![
-    ///         vec![0, 1, 2, 5],
-    ///         vec![1, 3, 4],
-    ///         vec![2, 4, 5],
-    ///         vec![0, 5],
-    ///     ],
-    ///     7,
-    /// );
+    /// use believer::ParityCheckMatrix;
+    /// 
+    /// let checks = vec![vec![0, 1, 2, 5], vec![1, 3, 4], vec![2, 4, 5], vec![0, 5]];
+    /// let matrix = ParityCheckMatrix::with_n_bits(7).with_checks(checks);
     /// assert_eq!(checks.get_check_degrees(), vec![4, 3, 3, 2]);
     /// ```
     pub fn get_check_degrees(&self) -> Vec<usize> {
         self.checks_iter().map(|check| check.get_n_bits()).collect()
     }
 
+    /// Returns `Some` view over the given `check` in `self`. Returns `None` if
+    /// `check` is out of bound.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use believer::ParityCheckMatrix;
+    ///
+    /// let checks = vec![vec![0, 1], vec![1, 2]];
+    /// 
+    /// let parity_check = ParityCheckMatrix::with_n_bits(3).with_checks(checks);
+    ///
+    /// let check = parity_check.get_check(0).unwrap();
+    /// assert_eq!(check.as_ref(), &[0, 1]);
+    ///
+    /// let check = parity_check.get_check(1).unwrap();
+    /// assert_eq!(check.as_ref(), &[1, 2]);
+    ///
+    /// assert!(parity_check.get_check(2).is_none());
+    /// ```
+    pub fn get_check(&self, check: usize) -> Option<CheckView> {
+        self.check_ranges.get(check).and_then(|&check_start| {
+            self.check_ranges.get(check + 1).map(|&check_end| {
+                CheckView::from_slice(&self.bit_indices[check_start..check_end])
+            })
+        })
+    }
+
+    /// Computes the syndrome of a given `message`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use believer::{GF2, ParityCheckMatrix};
+    ///
+    /// let checks = vec![vec![0, 1], vec![1, 2]];
+    /// let parity_check = ParityCheckMatrix::with_n_bits(3).with_checks(checks);
+    /// 
+    /// let message = vec![GF2::B0, GF2::B1, GF2::B1];
+    ///
+    /// assert_eq!(parity_check.get_syndrome_of(&message), vec![GF2::B1, GF2::B0]);
+    /// ```
+    pub fn get_syndrome_of(&self, message: &[GF2]) -> Vec<GF2> {
+        self.checks_iter().map(|check| check.compute_syndrome(message)).collect()
+    }
+
+    /// Computes the rank of `self`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use believer::ParityCheckMatrix;
+    /// 
+    /// let checks = vec![vec![0, 1], vec![1, 2], vec![0, 2]];
+    /// let parity_check = ParityCheckMatrix::with_n_bits(3).with_checks(checks);
+    /// 
+    /// assert_eq!(parity_check.get_rank(), 2);
+    /// ```
+    pub fn get_rank(&self) -> usize {
+        Ranker::from_parity_check_matrix(self).get_rank()
+    }
+
+    /// Gets the transposed version of `self` by swapping the bits with the checks.
+    /// 
+    /// # Example
+    /// 
+    /// ```
+    /// use believer::ParityCheckMatrix;
+    /// 
+    /// let checks = vec![vec![0, 1, 2], vec![1, 3], vec![0, 2, 3]];
+    /// let matrix = ParityCheckMatrix::with_n_bits(4).with_checks(checks);
+    /// 
+    /// let transposed_matrix = matrix.get_transposed_matrix();
+    ///
+    /// let expected_checks = vec![vec![0, 2], vec![0, 1], vec![0, 2], vec![1, 2]];
+    /// let expected_matrix = ParityCheckMatrix::with_n_bits(3).with_checks(checks);
+    /// 
+    /// assert_eq!(transposed_matrix, expected_matrix);
+    /// ```
+    pub fn get_transposed_matrix(&self) -> Self {
+        let checks = self.get_transposed_checks();
+        Self::with_n_bits(self.get_n_checks()).with_checks(checks)
+    }
+
+    fn get_transposed_checks(&self) -> Vec<Check> {
+        let mut transposer = Transposer::new();
+        self.checks_iter().for_each(|check| transposer.insert_bits_from(check));
+        transposer.get_checks()
+    }
+
+    // ***** Iterators *****
+
     /// Returns an iterator that yields a slice for each check of `self`.
     ///
     /// # Example
+    /// 
     /// ```
-    /// # use::believer::*;
+    /// use believer::ParityCheckMatrix;
+    /// 
     /// let parity_check = ParityCheckMatrix::new(
     ///     vec![
     ///         vec![0, 1],
@@ -218,74 +295,6 @@ impl ParityCheckMatrix {
             matrix: &self,
             active_check: 0,
         }
-    }
-
-    /// Returns `Some` slice of the given `check` in `self`. Returns `None` if
-    /// `check` is out of bound.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # use believer::*;
-    /// let parity_check = ParityCheckMatrix::new(
-    ///     vec![
-    ///         vec![0, 1],
-    ///         vec![1, 2],
-    ///     ],
-    ///     3
-    /// );
-    ///
-    /// let check = parity_check.get_check(0).unwrap();
-    /// assert_eq!(check.as_ref(), &[0, 1]);
-    ///
-    /// let check = parity_check.get_check(1).unwrap();
-    /// assert_eq!(check.as_ref(), &[1, 2]);
-    ///
-    /// assert!(parity_check.get_check(2).is_none());
-    /// ```
-    pub fn get_check(&self, check: usize) -> Option<Check> {
-        self.check_ranges.get(check).and_then(|&check_start| {
-            self.check_ranges
-                .get(check + 1)
-                .map(|&check_end| Check::from_slice(&self.bit_indices[check_start..check_end]))
-        })
-    }
-
-    /// Computes the dot product between `self` and a binary vector.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # use::believer::*;
-    /// let parity_check = ParityCheckMatrix::new(
-    ///     vec![
-    ///         vec![0, 1],
-    ///         vec![1, 2],
-    ///     ],
-    ///     3
-    /// );
-    /// let vector = vec![GF2::B0, GF2::B1, GF2::B1];
-    ///
-    /// assert_eq!(parity_check.dot(&vector), vec![GF2::B1, GF2::B0]);
-    /// ```
-    pub fn dot(&self, vector: &[GF2]) -> Vec<GF2> {
-        self.checks_iter()
-            .map(|check| check.compute_syndrome(vector))
-            .collect()
-    }
-
-    /// Creates an empty parity check matrix. That is, a parity check with 0 bit and 0 check.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # use believer::*;
-    /// let empty_matrix = ParityCheckMatrix::empty();
-    /// assert_eq!(empty_matrix.get_n_bits(), 0);
-    /// assert_eq!(empty_matrix.n_checks(), 0);
-    /// ```
-    pub fn empty() -> Self {
-        Self::new(Vec::new(), 0)
     }
 
     /// Checks if a given `message` is a codeword of `self`.
@@ -310,16 +319,6 @@ impl ParityCheckMatrix {
     pub fn has_codeword(&self, message: &[GF2]) -> bool {
         self.checks_iter()
             .all(|check| check.compute_syndrome(message) == GF2::B0)
-    }
-
-    /// Returns `true` is there is no value in `self`.
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-
-    /// Returns the number of 1 in `self`.
-    pub fn len(&self) -> usize {
-        self.bit_indices.len()
     }
 
     /// Returns a truncated parity check matrix with only the column of the given `bits`.
@@ -360,7 +359,7 @@ impl ParityCheckMatrix {
                     .collect()
             })
             .collect();
-        Self::new(checks, self.get_n_bits())
+        Self::with_n_bits(self.get_n_bits()).with_checks(checks)
     }
 
     /// Returns an iterators over all positions in `self` where the value
@@ -392,86 +391,6 @@ impl ParityCheckMatrix {
             check_ranges: &self.check_ranges,
             bit_indices: &self.bit_indices,
         }
-    }
-
-    /// Computes the rank of `self`.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # use believer::*;
-    /// let parity_check = ParityCheckMatrix::new(
-    ///     vec![
-    ///         vec![0, 1],
-    ///         vec![1, 2],
-    ///         vec![0, 2],
-    ///     ],
-    ///     3
-    /// );
-    /// assert_eq!(parity_check.rank(), 2);
-    /// ```
-    pub fn rank(&self) -> usize {
-        Ranker::new(self).rank()
-    }
-
-    pub fn transpose(&self) -> Self {
-        let mut indices = Vec::with_capacity(self.get_n_bits());
-        let mut column_indices = Vec::with_capacity(self.get_n_bits());
-        let mut row_ranges = Vec::new();
-        row_ranges.push(0);
-
-        let mut active_col = 0;
-        let mut row_lenght = 0;
-
-        self.positions_iter()
-            .enumerate()
-            .sorted_by(|(_, (r_0, c_0)), (_, (r_1, c_1))| match c_0.cmp(c_1) {
-                Ordering::Equal => r_0.cmp(r_1),
-                otherwise => otherwise,
-            })
-            .for_each(|(idx, (row, col))| {
-                if col == active_col {
-                    row_lenght += 1;
-                } else {
-                    while active_col < col {
-                        active_col += 1;
-                        row_ranges.push(*row_ranges.last().unwrap_or(&0) + row_lenght);
-                    }
-                    row_lenght = 1;
-                }
-                column_indices.push(row);
-                indices.push(idx);
-            });
-
-        row_ranges.push(*row_ranges.last().unwrap_or(&0) + row_lenght);
-
-        let n_bits = self.check_ranges().len() - 1;
-
-        Self {
-            check_ranges: row_ranges,
-            bit_indices: column_indices,
-            n_bits,
-        }
-    }
-
-    pub fn sparse_dot(v1: &[usize], v2: &[usize]) -> GF2 {
-        let mut i = 0;
-        let mut j = 0;
-        let mut accum = GF2::B0;
-
-        while (i < v1.len()) && (j < v2.len()) {
-            if v1[i] == v2[j] {
-                accum = accum + GF2::B1;
-                i += 1;
-                j += 1;
-            } else if v1[i] > v2[j] {
-                j += 1;
-            } else {
-                i += 1;
-            }
-        }
-
-        accum
     }
 
     /// Concatenates a parity check matrix with an other.
@@ -520,7 +439,7 @@ impl ParityCheckMatrix {
             })
             .collect();
 
-        Self::new(new_checks, self.get_n_bits() + other.get_n_bits())
+        Self::with_n_bits(self.get_n_bits() + other.get_n_bits()).with_checks(new_checks)
     }
 
     pub fn diag_concat(&self, hz: &ParityCheckMatrix) -> ParityCheckMatrix {
@@ -561,7 +480,7 @@ impl ParityCheckMatrix {
         // should check that A and B commute and that Hx*Hz^T = 0
 
         let hx = self.right_concat(&b);
-        let hz = b.transpose().right_concat(&self.transpose());
+        let hz = b.get_transposed_matrix().right_concat(&self.get_transposed_matrix());
 
         hx.diag_concat(&hz)
     }
@@ -621,7 +540,7 @@ impl ParityCheckMatrix {
             checks.push(new_row);
         }
 
-        ParityCheckMatrix::new(checks, l)
+        ParityCheckMatrix::with_n_bits(l).with_checks(checks)
     }
 
     pub fn circulant_right(indices: &Vec<usize>, l: usize) -> ParityCheckMatrix {
@@ -636,7 +555,7 @@ impl ParityCheckMatrix {
             checks.push(new_row);
         }
 
-        ParityCheckMatrix::new(checks, l)
+        ParityCheckMatrix::with_n_bits(l).with_checks(checks)
     }
 
     /// Returns a truncated parity check matrix where the column of the given `bits` are remove.
@@ -706,7 +625,7 @@ pub struct ChecksIter<'a> {
 }
 
 impl<'a> Iterator for ChecksIter<'a> {
-    type Item = Check<'a>;
+    type Item = CheckView<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let slice = self.matrix.get_check(self.active_check);
@@ -762,44 +681,9 @@ impl Add for &ParityCheckMatrix {
             new_rows.push(accum);
         }
 
-        ParityCheckMatrix::new(new_rows, nb_bits)
+        ParityCheckMatrix::with_n_bits(nb_bits).with_checks(new_rows)
     }
 }
-
-// NOTE: IS IT USEFUL???
-
-// impl Mul for &ParityCheckMatrix {
-//     type Output = ParityCheckMatrix;
-
-//     fn mul(self, b: &ParityCheckMatrix) -> ParityCheckMatrix {
-//         // should check for dimensions, needs some optimization
-
-//         //let mut new_row = vec![GF2::B0; B.n_bits]; // initializes vector that will temporarily store a computed row of the end matrix
-//         let nb_cols = b.n_bits;
-//         let nb_rows = self.check_ranges.len() - 1;
-//         let mut accum_new_rows: Vec<Vec<usize>> = Vec::with_capacity(nb_rows);
-
-//         for v1 in self.checks_iter() {
-//             let mut sparse_row = Vec::with_capacity(nb_cols); // in the worst case we have entries for every column
-
-//             for (i, v2) in b.transpose().checks_iter().enumerate() {
-//                 let dot_res = ParityCheckMatrix::sparse_dot(
-//                     &v1.iter().cloned().collect(),
-//                     &v2.iter().cloned().collect()
-//                 );
-
-//                 if let GF2::B1 = dot_res {
-//                     //only if the dot product returns a non null value do we mention the column in the sparse row
-//                     sparse_row.push(i);
-//                 }
-//             }
-
-//             accum_new_rows.push(sparse_row);
-//         }
-
-//         ParityCheckMatrix::new(accum_new_rows, nb_cols)
-//     }
-// }
 
 /// An iterator over the position where a parity check matrix is 1.
 /// It is ordered by row and then by col.
@@ -828,95 +712,6 @@ impl<'a> Iterator for PositionsIter<'a> {
                 position
             })
     }
-}
-
-// *************************
-// Private utilitary structs
-// *************************
-
-// Helper struct to compute the rank of a parity check matrix.
-struct Ranker {
-    checks: Vec<Vec<Vec<usize>>>,
-    n_cols: usize,
-}
-
-impl Ranker {
-    fn new(matrix: &ParityCheckMatrix) -> Self {
-        let mut checks = vec![Vec::new(); matrix.get_n_bits()];
-        matrix.checks_iter().for_each(|check| {
-            checks[check.min()].push(check.iter().cloned().collect());
-        });
-        Self {
-            checks,
-            n_cols: matrix.get_n_bits(),
-        }
-    }
-
-    fn rank(&mut self) -> usize {
-        self.echelon_form();
-        let mut r = 0;
-        for col in 0..self.n_cols {
-            if !self.checks[col].is_empty() {
-                r += 1;
-            }
-        }
-        r
-    }
-
-    // Private methodes
-
-    fn eliminate_col(&mut self, col: usize) {
-        if let Some(pivot_check) = self.checks[col].pop() {
-            while let Some(other_check) = self.checks[col].pop() {
-                self.insert(add_checks(&pivot_check, &other_check));
-            }
-            self.checks[col].push(pivot_check)
-        }
-    }
-
-    fn insert(&mut self, check: Vec<usize>) {
-        if let Some(&x) = check.first() {
-            self.checks[x].push(check);
-        }
-    }
-
-    fn echelon_form(&mut self) {
-        for col in 0..self.n_cols {
-            self.eliminate_col(col);
-        }
-    }
-}
-
-fn add_checks(check_0: &[usize], check_1: &[usize]) -> Vec<usize> {
-    let mut sum = Vec::with_capacity(check_0.len() + check_1.len());
-    let mut iter_0 = check_0.iter().peekable();
-    let mut iter_1 = check_1.iter().peekable();
-    loop {
-        match (iter_0.peek(), iter_1.peek()) {
-            (Some(&&v), None) => {
-                sum.push(v);
-                iter_0.next();
-            }
-            (None, Some(&&v)) => {
-                sum.push(v);
-                iter_1.next();
-            }
-            (Some(&&v_0), Some(&&v_1)) => {
-                if v_0 < v_1 {
-                    sum.push(v_0);
-                    iter_0.next();
-                } else if v_0 > v_1 {
-                    sum.push(v_1);
-                    iter_1.next();
-                } else {
-                    iter_0.next();
-                    iter_1.next();
-                }
-            }
-            (None, None) => break,
-        }
-    }
-    sum
 }
 
 #[cfg(test)]
@@ -952,7 +747,8 @@ mod test {
 
     #[test]
     fn checks_iterator() {
-        let parity_check = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2]], 3);
+        let parity_check = ParityCheckMatrix::with_n_bits(3)
+            .with_checks(vec![vec![0, 1], vec![1, 2]]);
         let mut iter = parity_check.checks_iter();
 
         assert_eq!(iter.next(), parity_check.get_check(0));
@@ -964,8 +760,9 @@ mod test {
     }
 
     #[test]
-    fn dot_product() {
-        let parity_check = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2]], 3);
+    fn syndrome() {
+        let parity_check = ParityCheckMatrix::with_n_bits(3)
+            .with_checks(vec![vec![0, 1], vec![1, 2]]);
         let bits = vec![GF2::B0, GF2::B1, GF2::B1];
 
         assert_eq!(
@@ -976,12 +773,13 @@ mod test {
             parity_check.get_check(1).unwrap().compute_syndrome(&bits),
             GF2::B0
         );
-        assert_eq!(parity_check.dot(&bits), vec![GF2::B1, GF2::B0]);
+        assert_eq!(parity_check.get_syndrome_of(&bits), vec![GF2::B1, GF2::B0]);
     }
 
     #[test]
     fn positions_iterator() {
-        let parity_check = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2]], 3);
+        let parity_check = ParityCheckMatrix::with_n_bits(3)
+            .with_checks(vec![vec![0, 1], vec![1, 2]]);
         let mut iter = parity_check.positions_iter();
 
         assert_eq!(iter.next(), Some((0, 0)));
@@ -993,22 +791,12 @@ mod test {
 
     #[test]
     fn rank() {
-        let parity_check_0 = ParityCheckMatrix::new(
-            vec![vec![0, 1, 2, 4], vec![0, 1, 3, 5], vec![0, 2, 3, 6]],
-            7,
-        );
-        assert_eq!(parity_check_0.rank(), 3);
+        let parity_check_0 = ParityCheckMatrix::with_n_bits(7)
+            .with_checks(vec![vec![0, 1, 2, 4], vec![0, 1, 3, 5], vec![0, 2, 3, 6]]);
+        assert_eq!(parity_check_0.get_rank(), 3);
 
-        let parity_check_1 = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2], vec![0, 2]], 3);
-        assert_eq!(parity_check_1.rank(), 2);
-    }
-
-    #[test]
-    fn size() {
-        let parity_check = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2]], 3);
-
-        assert_eq!(parity_check.len(), 4);
-        assert_eq!(parity_check.get_n_bits(), 3);
-        assert_eq!(parity_check.get_n_checks(), 2);
+        let parity_check_1 = ParityCheckMatrix::with_n_bits(3)
+            .with_checks(vec![vec![0, 1], vec![1, 2], vec![0, 2]]);
+        assert_eq!(parity_check_1.get_rank(), 2);
     }
 }

@@ -53,7 +53,7 @@ impl Decoder for ErasureDecoder {
     // the erased bit columns.
     fn decode(&self, error: &Self::Error) -> Self::Result {
         let erased_parity_check = self.checks.keep(error);
-        if error.len() - erased_parity_check.rank() == 0 {
+        if error.len() - erased_parity_check.get_rank() == 0 {
             ErasureResult::Success
         } else {
             ErasureResult::Failure
@@ -69,7 +69,7 @@ impl Decoder for ErasureDecoder {
     }
 
     fn take_checks(&mut self) -> Self::Checks {
-        std::mem::replace(&mut self.checks, ParityCheckMatrix::new(Vec::new(), 0))
+        std::mem::replace(&mut self.checks, ParityCheckMatrix::new())
     }
 }
 
@@ -134,7 +134,7 @@ mod test {
 
     #[test]
     fn repetition_code() {
-        let matrix = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2]], 3);
+        let matrix = ParityCheckMatrix::with_n_bits(3).with_checks(vec![vec![0, 1], vec![1, 2]]);
         let decoder = ErasureDecoder::new(matrix, 0.2);
 
         assert_eq!(decoder.decode(&vec![]), ErasureResult::Success);
@@ -150,10 +150,8 @@ mod test {
     #[test]
     fn hamming_code_with_builder() {
         let decoder_builder = ErasureDecoderBuilder::new(0.25);
-        let code = ParityCheckMatrix::new(
-            vec![vec![0, 1, 2, 4], vec![0, 1, 3, 5], vec![0, 2, 3, 6]],
-            7,
-        );
+        let code = ParityCheckMatrix::with_n_bits(7)
+            .with_checks(vec![vec![0, 1, 2, 4], vec![0, 1, 3, 5], vec![0, 2, 3, 6]]);
         let decoder = decoder_builder.build_from(code);
 
         assert_eq!(decoder.decode(&vec![]), ErasureResult::Success);

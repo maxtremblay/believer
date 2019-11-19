@@ -132,7 +132,7 @@ impl Generator {
 impl CodeGenerator for Generator {
     fn generate_with_rng<R: Rng>(&self, rng: R) -> ParityCheckMatrix {
         if self.will_generate_an_empty_code() {
-            ParityCheckMatrix::empty()
+            ParityCheckMatrix::new()
         } else {
             self.generate_non_empty_code_with_rng(rng)
         }
@@ -142,7 +142,7 @@ impl CodeGenerator for Generator {
 #[cfg(test)]
 mod test {
     use super::*;
-    use rand::{thread_rng, SeedableRng};
+    use rand::SeedableRng;
     use rand_chacha::ChaCha8Rng;
 
     #[test]
@@ -150,7 +150,7 @@ mod test {
         let generator = Generator::new();
         assert_eq!(
             generator.generate(),
-            ParityCheckMatrix::empty()
+            ParityCheckMatrix::new()
         );
     }
 

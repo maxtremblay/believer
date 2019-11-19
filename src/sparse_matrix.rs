@@ -11,7 +11,7 @@ pub(crate) struct SparseMatrix<'a> {
 
 impl<'a> SparseMatrix<'a> {
     pub(crate) fn from_parity_check(parity_check: &'a ParityCheckMatrix, values: Vec<f64>) -> Self {
-        if parity_check.len() != values.len() {
+        if parity_check.get_n_edges() != values.len() {
             panic!("wrong number of values");
         }
         Self {

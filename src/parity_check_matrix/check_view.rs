@@ -11,18 +11,18 @@
 //! ];
 //! let matrix = ParityCheckMatrix::with_n_bits(4).with_checks(all_checks);
 //!
-//! let second_check = matrix.check(2);
+//! let second_check = matrix.get_check(2);
 //! ```
 
 use crate::GF2;
 
 /// A view over a check of a parity check matrix.
 #[derive(Debug, PartialEq)]
-pub struct Check<'a> {
+pub struct CheckView<'a> {
     bits: &'a [usize],
 }
 
-impl<'a> Check<'a> {
+impl<'a> CheckView<'a> {
     // Useful to create a check from a parity check matrix.
     pub(crate) fn from_slice(slice: &'a [usize]) -> Self {
         Self { bits: slice }
@@ -149,9 +149,14 @@ impl<'a> Check<'a> {
     pub fn min(&self) -> usize {
         *self.bits.first().unwrap() // Check is always sorted and non empty.
     }
+
+    /// Copies `self` into a new `Vec`.
+    pub fn to_vec(&self) -> Vec<usize> {
+        self.as_ref().to_vec()
+    }
 }
 
-impl<'a> AsRef<[usize]> for Check<'a> {
+impl<'a> AsRef<[usize]> for CheckView<'a> {
     /// Returns the indices of the bits connected to `self` as a slice.
     fn as_ref(&self) -> &[usize] {
         self.bits

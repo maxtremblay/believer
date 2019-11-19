@@ -46,5 +46,5 @@ pub mod random_checks;
 pub mod hierarchical_codes;
 // pub use hierarchical_code::*;
 
-// pub mod increasing_range_code;
-// pub use increasing_range_code::*;
+pub mod increasing_range_code;
+pub use increasing_range_code::*;

@@ -51,7 +51,7 @@ impl<R: Rng> CodeConstructor<R> {
         }
     }
 
-    fn get_parity_check_matrix(mut self) -> ParityCheckMatrix {
+    fn get_parity_check_matrix(self) -> ParityCheckMatrix {
         ParityCheckMatrix::with_n_bits(self.n_bits).with_checks(self.checks)
     }
 }
