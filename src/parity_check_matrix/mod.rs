@@ -122,6 +122,29 @@ impl ParityCheckMatrix {
         self.bit_indices.append(&mut check);
     }
 
+    /// Creates the `n_bits` identity matrix.
+    /// 
+    /// # Example 
+    /// 
+    /// ```
+    /// use believer::ParityCheckMatrix;
+    /// 
+    /// let matrix = ParityCheckMatrix::identity_with_n_bits(3);
+    /// 
+    /// let identity_checks = vec![vec![0], vec![1], vec![2]];
+    /// let identity_matrix = ParityCheckMatrix::with_n_bits(3)
+    ///     .with_checks(identity_checks);
+    /// 
+    /// assert_eq!(matrix, identity_matrix);
+    /// ```
+    pub fn identity_with_n_bits(n_bits: usize) -> ParityCheckMatrix {
+        Self {
+            bit_indices: (0..n_bits).collect(),
+            check_ranges: (0..n_bits + 1).collect(),
+            n_bits,
+        }
+    }
+
     // ***** Getters *****
 
     /// Returns the number of bits in `self`.
@@ -500,19 +523,6 @@ impl ParityCheckMatrix {
             bit_indices: indices,
             check_ranges: ranges,
             n_bits: l,
-        }
-    }
-
-    pub fn ident(l: usize) -> ParityCheckMatrix {
-        //returns the identity matrix of dimension l
-        let n_bits = l;
-        let check_ranges: Vec<usize> = (0..l + 1).collect();
-        let bit_indices: Vec<usize> = (0..l).collect();
-
-        Self {
-            bit_indices,
-            check_ranges,
-            n_bits,
         }
     }
 
