@@ -24,6 +24,9 @@ use ranker::Ranker;
 mod transposer;
 use transposer::Transposer;
 
+mod concatener;
+use concatener::Concatener;
+
 /// A sparse implementation of a parity check matrix.
 #[derive(Debug, PartialEq, Clone)]
 pub struct ParityCheckMatrix {

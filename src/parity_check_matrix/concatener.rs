@@ -1,8 +1,14 @@
 use super::ParityCheckMatrix;
+use itertools::EitherOrBoth::{Both, Left, Right};
+use itertools::Itertools;
 
-pub(super) struct ConcatTool {}
+pub(super) struct Concatener {}
 
-impl ConcatTool {
+impl Concatener {
+    pub(super) fn from(matrix: &parity_check_matrix) -> Self {
+        unimplemented!()
+    }
+
     pub(super) fn concat_diagonally_with(other: &ParityCheckMatrix) -> ParityCheckMatrix {
         unimplemented!()
     }
