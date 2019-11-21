@@ -1,8 +1,6 @@
 //! A sparse implementation of a parity check matrix.
 
 use crate::GF2;
-use itertools::EitherOrBoth::{Both, Left, Right};
-use itertools::Itertools;
 use std::ops::Add;
 
 pub mod check;
@@ -299,6 +297,50 @@ impl ParityCheckMatrix {
         transposer.get_checks()
     }
 
+    /// Returns the horizontal concatenation of `self` with `other`.
+    /// 
+    /// # Example 
+    /// 
+    /// ```
+    /// use believer::ParityCheckMatrix;
+    /// let left_matrix = ParityCheckMatrix::with_n_bits(3)
+    ///     .with_checks(vec![vec![0, 1], vec![1, 2]]);
+    /// let right_matrix = ParityCheckMatrix::with_n_bits(4)
+    ///     .with_checks(vec![vec![1, 2, 3], vec![0, 1], vec![2, 3]]);
+    /// 
+    /// let concatened = left_matrix.get_horizontal_concat_with(&right_matrix);
+    ///
+    /// let expected = ParityCheckMatrix::with_n_bits(7)
+    ///     .with_checks(vec![vec![0, 1, 4, 5, 6], vec![1, 2, 3, 4], vec![5, 6]]);
+    /// 
+    /// assert_eq!(concatened, expected);
+    /// ```
+    pub fn get_horizontal_concat_with(&self, other: &ParityCheckMatrix) -> ParityCheckMatrix {
+        Concatener::from(self, other).concat_horizontally()
+    }
+
+    /// Returns the diagonal concatenation of `self` with `other`.
+    /// 
+    /// # Example 
+    /// 
+    /// ```
+    /// use believer::ParityCheckMatrix;
+    /// let left_matrix = ParityCheckMatrix::with_n_bits(3)
+    ///     .with_checks(vec![vec![0, 1], vec![1, 2]]);
+    /// let right_matrix = ParityCheckMatrix::with_n_bits(4)
+    ///     .with_checks(vec![vec![1, 2, 3], vec![0, 1], vec![2, 3]]);
+    /// 
+    /// let concatened = left_matrix.get_diagonal_concat_with(&right_matrix);
+    ///
+    /// let expected = ParityCheckMatrix::with_n_bits(7)
+    ///     .with_checks(vec![vec![0, 1], vec![1, 2], vec![4, 5, 6], vec![3, 4], vec![5, 6]]);
+    /// 
+    /// assert_eq!(concatened, expected);
+    /// ```
+    pub fn get_diagonal_concat_with(&self, other: &ParityCheckMatrix) -> ParityCheckMatrix {
+        Concatener::from(self, other).concat_diagonally()
+    }
+
     // ***** Iterators *****
 
     /// Returns an iterator that yields a slice for each check of `self`.
@@ -407,21 +449,13 @@ impl ParityCheckMatrix {
         Self::with_n_bits(self.get_n_bits()).with_checks(checks)
     }
 
-    pub fn concat_horizontally_with(&self, other: &ParityCheckMatrix) -> ParityCheckMatrix {
-        Concatener::from(self, other).concat_horizontally()
-    }
-
-    pub fn concat_diagonally_with(&self, other: &ParityCheckMatrix) -> ParityCheckMatrix {
-        Concatener::from(self, other).concat_diagonally()
-    }
-
     pub fn gbc(&self, b: &ParityCheckMatrix) -> ParityCheckMatrix {
         // should check that A and B commute and that Hx*Hz^T = 0
-        let hx = self.concat_horizontally_with(&b);
+        let hx = self.get_horizontal_concat_with(&b);
         let hz = b
             .get_transposed_matrix()
-            .concat_horizontally_with(&self.get_transposed_matrix());
-        hx.concat_diagonally_with(&hz)
+            .get_horizontal_concat_with(&self.get_transposed_matrix());
+        hx.get_diagonal_concat_with(&hz)
     }
 
     pub fn permu_matrix(l: usize) -> ParityCheckMatrix {
