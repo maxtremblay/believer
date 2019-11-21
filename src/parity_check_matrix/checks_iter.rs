@@ -34,12 +34,19 @@ mod test {
     fn checks_iterator() {
         let checks = vec![vec![0, 1, 2], vec![2, 3], vec![0, 3], vec![1, 2, 3]];
         let matrix = ParityCheckMatrix::with_n_bits(4).with_checks(checks);
-        let mut iter = matrix.checks_iter();
+        let mut iter = ChecksIter::from(&matrix);
 
         assert_eq!(iter.next(), Some(CheckView::from_slice(&[0, 1, 2])));
         assert_eq!(iter.next(), Some(CheckView::from_slice(&[2, 3])));
         assert_eq!(iter.next(), Some(CheckView::from_slice(&[0, 3])));
         assert_eq!(iter.next(), Some(CheckView::from_slice(&[1, 2, 3])));
+        assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn checks_iterator_for_empty_matrix() {
+        let matrix = ParityCheckMatrix::new();
+        let mut iter = ChecksIter::from(&matrix);
         assert_eq!(iter.next(), None);
     }
 }
