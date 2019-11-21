@@ -1,5 +1,5 @@
-use super::ParityCheckMatrix;
 use super::get_bitwise_sum;
+use super::ParityCheckMatrix;
 
 type Row = Vec<usize>;
 
@@ -40,7 +40,7 @@ impl Ranker {
             self.rank += 1;
         }
     }
-    
+
     fn find_and_remove_pivot(&mut self) -> Option<Row> {
         for row_index in 0..self.n_rows {
             if self.row_at_index_start_at_active_column(row_index) {
@@ -52,7 +52,10 @@ impl Ranker {
     }
 
     fn row_at_index_start_at_active_column(&self, index: usize) -> bool {
-        self.rows[index].first().map(|column| *column == self.active_column).unwrap_or(false)
+        self.rows[index]
+            .first()
+            .map(|column| *column == self.active_column)
+            .unwrap_or(false)
     }
 
     fn get_and_remove_row_at_index(&mut self, index: usize) -> Row {
@@ -107,11 +110,10 @@ mod test {
             vec![0, 3],
             vec![3, 4, 5],
             vec![0, 4, 6],
-            vec![5, 6]
+            vec![5, 6],
         ];
         let matrix = ParityCheckMatrix::with_n_bits(7).with_checks(checks);
         let rank = Ranker::from_parity_check_matrix(&matrix).get_rank();
         assert_eq!(rank, 4);
     }
-
 }

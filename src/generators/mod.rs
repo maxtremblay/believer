@@ -2,13 +2,12 @@ use crate::ErasureDecoder;
 use crate::ParityCheckMatrix;
 use crate::SimulationResult;
 use crate::Simulator;
-use rand::{Rng, thread_rng};
-
+use rand::{thread_rng, Rng};
 
 pub trait CodeGenerator {
     /// Returns a code generated using the given random number generator `rng`.
     fn generate_with_rng<R: Rng>(&self, rng: R) -> ParityCheckMatrix;
-    
+
     fn generate(&self) -> ParityCheckMatrix {
         self.generate_with_rng(thread_rng())
     }

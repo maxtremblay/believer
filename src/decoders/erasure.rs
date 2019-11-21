@@ -150,8 +150,11 @@ mod test {
     #[test]
     fn hamming_code_with_builder() {
         let decoder_builder = ErasureDecoderBuilder::new(0.25);
-        let code = ParityCheckMatrix::with_n_bits(7)
-            .with_checks(vec![vec![0, 1, 2, 4], vec![0, 1, 3, 5], vec![0, 2, 3, 6]]);
+        let code = ParityCheckMatrix::with_n_bits(7).with_checks(vec![
+            vec![0, 1, 2, 4],
+            vec![0, 1, 3, 5],
+            vec![0, 2, 3, 6],
+        ]);
         let decoder = decoder_builder.build_from(code);
 
         assert_eq!(decoder.decode(&vec![]), ErasureResult::Success);

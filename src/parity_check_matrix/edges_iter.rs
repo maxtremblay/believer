@@ -1,5 +1,4 @@
 /// An iterator over all edges in `self` ordered by check first.
-
 use super::ParityCheckMatrix;
 
 /// An iterator over all edges in `self` ordered by check first.
@@ -46,7 +45,6 @@ impl<'a> EdgesIter<'a> {
     fn go_to_next_check(&mut self) {
         self.active_check += 1;
     }
-
 }
 
 impl<'a> Iterator for EdgesIter<'a> {
@@ -62,12 +60,12 @@ impl<'a> Iterator for EdgesIter<'a> {
 #[cfg(test)]
 mod test {
     use super::*;
-    
+
     #[test]
     fn edges_iterator() {
-        let parity_check = ParityCheckMatrix::with_n_bits(3)
-            .with_checks(vec![vec![0, 1], vec![1, 2]]);
-        
+        let parity_check =
+            ParityCheckMatrix::with_n_bits(3).with_checks(vec![vec![0, 1], vec![1, 2]]);
+
         let mut iter = parity_check.edges_iter();
 
         assert_eq!(iter.next(), Some((0, 0)));

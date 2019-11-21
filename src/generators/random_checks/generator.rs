@@ -1,7 +1,7 @@
 use super::adjacency::Adjacency;
 use rand::distributions::WeightedIndex;
-use rand::{Rng, thread_rng};
 use rand::rngs::ThreadRng;
+use rand::{thread_rng, Rng};
 
 /// A `Generator` helps generating checks for a code while respecting some global constraints.
 ///
@@ -9,7 +9,7 @@ use rand::rngs::ThreadRng;
 /// Take a look at all the setters methods (the one that have `&mut self` as argument and output)
 /// to see all the parameters that can be set.
 ///
-/// # Example 
+/// # Example
 ///
 /// ```
 /// use believer::random_checks::Generator;
@@ -30,7 +30,7 @@ use rand::rngs::ThreadRng;
 /// let first_check = generator.set_over_bits(vec![0, 1, 2, 3]).get_random_check();
 /// assert_eq!(first_check, Some(vec![0, 1, 2, 3]));
 ///
-/// // Use relative weight for the next check. 
+/// // Use relative weight for the next check.
 /// let distribution = vec![0.0, 0.0, 0.0, 0.0, 0.1, 0.1, 0.2, 0.2, 0.2, 0.2];
 /// let second_check = generator
 ///     .set_over_all_bits()
@@ -39,29 +39,29 @@ use rand::rngs::ThreadRng;
 /// assert_eq!(second_check, Some(vec![6, 7, 8, 9]));
 ///
 /// // By default, all generated checks of degree below target (4 in this example) are rejected.
-/// // We can't generate a degree 4 check over only 3 bits. 
+/// // We can't generate a degree 4 check over only 3 bits.
 /// let third_check = generator
 ///     .set_uniform_distribution()
 ///     .set_over_bits(vec![4, 5, 6])
 ///     .get_random_check();
 /// assert!(third_check.is_none());
 ///
-/// // But, we can relax this constraint. In this case, the generator will try to create a degree 4 
-/// // (the target check degree) check. Since it not possible, a degree 3 check will be returns 
+/// // But, we can relax this constraint. In this case, the generator will try to create a degree 4
+/// // (the target check degree) check. Since it not possible, a degree 3 check will be returns
 /// // instead.
 /// generator.allow_checks_of_degree_at_least(3);
 /// let fourth_check = generator.get_random_check();
 /// assert_eq!(fourth_check, Some(vec![4, 5, 6]));
 ///
 /// // It is also possible that a check is rejected if it would create a cycle smaller than the
-/// // minimal girth or if all the bits have reached the maximum degree. In the following example 
+/// // minimal girth or if all the bits have reached the maximum degree. In the following example
 /// // having bit 4 and 6 together in an other check would create a length 4 cycle.
 /// let fifth_check = generator.set_over_bits(vec![0, 4, 6]).get_random_check();
 /// assert!(fifth_check.is_none());
-/// 
+///
 /// // However, it is possible to generate a degree 2 check.
 /// let sixth_check = generator.allow_checks_of_degree_at_least(2).get_random_check();
-/// assert_eq!(sixth_check, Some(vec![0, 4])); 
+/// assert_eq!(sixth_check, Some(vec![0, 4]));
 /// ```
 pub struct Generator<R: Rng = ThreadRng> {
     maximal_bit_degree: usize,
@@ -95,9 +95,7 @@ impl Generator<ThreadRng> {
         let mut generator = Self::new()
             .initialize_bit_degrees(n_bits)
             .initialize_adjacency(n_bits);
-        generator
-            .set_over_all_bits()
-            .set_uniform_distribution();
+        generator.set_over_all_bits().set_uniform_distribution();
         generator
     }
 
@@ -126,20 +124,20 @@ impl<R: Rng> Generator<R> {
     // ***** Construction *****
 
     /// Create a copy of `self` with the given `rng` consuming self .
-    /// 
+    ///
     /// If not set, random numbers will be generate using `rand::thread_rng`. This method consume
     /// `self` and create a new `Generator` from it taking ownership of most of it's parameters. It
     /// is designed to be use during construction.
-    /// 
+    ///
     /// # Example
-    /// 
+    ///
     /// ```
     /// use believer::random_checks::Generator;
-    /// 
+    ///
     /// // Some random number generator.
     /// use rand::SeedableRng;
     /// use rand_chacha::ChaCha8Rng;
-    /// 
+    ///
     /// let mut rng = ChaCha8Rng::seed_from_u64(123);
     /// let generator = Generator::new().with_random_number_generator(rng);
     /// ```
@@ -158,19 +156,23 @@ impl<R: Rng> Generator<R> {
 
     // ***** Setters *****
 
-    /// Set the minimal girth of `self`. 
-    /// 
+    /// Set the minimal girth of `self`.
+    ///
     /// The checks generated after this won't create any cycle smaller than the minimal girth.
-    /// If this is set before generating the first checks, the generated checks will induce 
+    /// If this is set before generating the first checks, the generated checks will induce
     /// a code with girth at least `minimal_girth`.
     pub fn set_minimal_girth(&mut self, minimal_girth: usize) -> &mut Self {
-        let depth = if minimal_girth >= 2 { (minimal_girth - 2) / 2 } else { 0 };
+        let depth = if minimal_girth >= 2 {
+            (minimal_girth - 2) / 2
+        } else {
+            0
+        };
         self.adjacency.set_recursion_depth(depth);
         self
     }
 
-    /// Set the maximal bit degree of `self`. 
-    /// 
+    /// Set the maximal bit degree of `self`.
+    ///
     /// A given bit will not be part of any new check if it was generated in
     /// `maximal_bit_degree` previous checks. The default value is 1.
     pub fn set_maximal_bit_degree(&mut self, degree: usize) -> &mut Self {
@@ -179,7 +181,7 @@ impl<R: Rng> Generator<R> {
     }
 
     /// Set `self` to generate the following checks without any restriction on the bits.
-    /// 
+    ///
     /// This is the default behavior.
     pub fn set_over_all_bits(&mut self) -> &mut Self {
         self.active_bits = (0..self.get_n_bits()).collect();
@@ -195,22 +197,22 @@ impl<R: Rng> Generator<R> {
     }
 
     /// Set `self` to generate the following checks without the given `bits`.
-    /// 
+    ///
     /// This won't reset the target bits.
-    /// 
+    ///
     /// # Example
-    /// 
+    ///
     /// ```
     /// use believer::random_checks::Generator;
-    /// 
+    ///
     /// let mut generator = Generator::with_n_bits(10);
-    /// 
+    ///
     /// // This limit the following checks over bits 2, 3, 4, ..., 9.
     /// generator.set_without_bits(vec![0, 1]);
-    /// 
+    ///
     /// // This limit the following checks over bits 7, 8 and 9 since 0 and 1 are already removed.
     /// generator.set_without_bits(vec![2, 3, 4, 5, 6]);
-    /// 
+    ///
     /// // This limit the following checks over bits 0 and 1.
     /// generator.set_over_bits(vec![0, 1, 2]).set_without_bits(vec![2]);
     /// ```
@@ -224,28 +226,28 @@ impl<R: Rng> Generator<R> {
     }
 
     /// Set `self` to generate bits in checks according to the given distribution.
-    /// 
+    ///
     /// The distribution does not need to be normalize. It will be normalize to sum to 1 except if
     /// the sum is 0. If not set, the uniform distribution is used.
-    /// 
+    ///
     /// # Panic
-    /// 
+    ///
     /// Panics if the distribution lenght is not the same as the number of bits in `self`. Also
     /// panics if there are some negative probabilities.
-    /// 
-    /// # Example 
-    /// 
+    ///
+    /// # Example
+    ///
     /// ```
     /// use believer::random_checks::Generator;
     /// let mut generator = Generator::with_n_bits(5);
-    /// 
+    ///
     /// // It is more like that the first 3 bits are selected in the following checks.
     /// generator.set_distribution(vec![0.3, 0.3, 0.3, 0.05, 0.05]);
-    /// 
+    ///
     /// // It can be set with relative weights.
     /// generator.set_distribution(vec![30.0, 30.0, 30.0, 5.0, 5.0]);
-    /// 
-    /// // If we limit the bits to a subset, the distribution is updated in consequence. In the 
+    ///
+    /// // If we limit the bits to a subset, the distribution is updated in consequence. In the
     /// // following, the distribution is updated to [0.75, 0.0, 0.0, 12.5, 12.5].
     /// generator.set_without_bits(vec![1, 2]);
     /// ```
@@ -261,27 +263,27 @@ impl<R: Rng> Generator<R> {
     }
 
     /// Set `self` to generate bits in checks according to the uniform distribution.
-    /// 
+    ///
     /// This is the default behavior.
     pub fn set_uniform_distribution(&mut self) -> &mut Self {
         self.distribution = vec![1.0 / self.get_n_bits() as f64; self.get_n_bits()];
         self
     }
 
-    /// Set the target check degree of `self`. 
+    /// Set the target check degree of `self`.
     ///
     /// By default, the target degree is 2 and a check will be rejected if, due to other
-    /// constraints, it can't be generated with the target degree. This can be change using 
+    /// constraints, it can't be generated with the target degree. This can be change using
     /// `self.allow_checks_of_degree_at_least(degree)` or `self.allow_only_full_degree_check()`.
-    /// 
+    ///
     /// # Example
-    /// 
+    ///
     /// ```
     /// use believer::random_checks::Generator;
     ///
     /// let mut generator = Generator::with_n_bits(5);
     /// generator.set_target_check_degree(4);
-    /// 
+    ///
     /// // Can't generator a degree 4 check over only bit 0 and 1.
     /// assert_eq!(generator.set_over_bits(vec![0, 1]).get_random_check(), None);
     /// ```
@@ -290,21 +292,21 @@ impl<R: Rng> Generator<R> {
         self
     }
 
-    /// Set `self` to allow all checks of degree at least `degree`. 
+    /// Set `self` to allow all checks of degree at least `degree`.
     ///
     /// By default, `self` only accept check of target degree (which is 2 by default).
-    /// 
+    ///
     /// # Example
-    /// 
+    ///
     /// ```
     /// use believer::random_checks::Generator;
     ///
     /// let mut generator = Generator::with_n_bits(5);
-    /// 
+    ///
     /// // Can't generator a degree 2 (default) check over only bit 0.
     /// generator.set_over_bits(vec![0]);
     /// assert_eq!(generator.get_random_check(), None);
-    /// 
+    ///
     /// // It is possible to allow check of degree 1 checks.
     /// generator.allow_checks_of_degree_at_least(1);
     /// assert_eq!(generator.get_random_check(), Some(vec![0]));
@@ -317,22 +319,22 @@ impl<R: Rng> Generator<R> {
     /// Set `self` to allow only check of target degree (2 by default).
     ///
     /// This is the default behavior.
-    /// 
+    ///
     /// # Example
-    /// 
+    ///
     /// ```
     /// use believer::random_checks::Generator;
     ///
     /// let mut generator = Generator::with_n_bits(5);
     /// generator.set_target_check_degree(4);
-    /// 
+    ///
     /// // Not necessary, this is the default.
     /// generator.allow_only_check_of_target_degree();
-    /// 
+    ///
     /// // A degree 3 check is not allowed.
     /// generator.set_over_bits(vec![0, 1, 2]);
     /// assert_eq!(generator.get_random_check(), None);
-    /// 
+    ///
     /// // It is possible to generate a check of degree 4 over 5 bits.
     /// generator.set_over_all_bits();
     /// assert!(generator.get_random_check().is_some());
@@ -357,12 +359,12 @@ impl<R: Rng> Generator<R> {
         self.bit_degrees.len()
     }
 
-    /// Generates a random check. 
-    /// 
+    /// Generates a random check.
+    ///
     /// The behavior of this function can be change using the setter methods.
-    /// 
+    ///
     /// # Example
-    /// 
+    ///
     /// ```
     /// use believer::random_checks::Generator;
     /// let mut generator = Generator::with_n_bits(10);
@@ -388,19 +390,17 @@ impl<R: Rng> Generator<R> {
     }
 
     fn add_random_bit_to_check(&mut self, check: &mut Vec<usize>) {
-        self
-            .get_random_bit_generator_for_check(check)
+        self.get_random_bit_generator_for_check(check)
             .add_random_bit_to_check(check);
-
     }
 
     fn get_random_bit_generator_for_check(&mut self, check: &[usize]) -> RandomBitGenerator<R> {
         let availables = self.get_available_bits_for_check(check);
         let distribution = self.get_distribution_over(&availables);
-        RandomBitGenerator { 
-            availables, 
-            distribution, 
-            random_number_generator: &mut self.random_number_generator 
+        RandomBitGenerator {
+            availables,
+            distribution,
+            random_number_generator: &mut self.random_number_generator,
         }
     }
 
@@ -426,10 +426,7 @@ impl<R: Rng> Generator<R> {
     }
 
     fn get_distribution_over(&self, bits: &[usize]) -> Vec<f64> {
-        bits
-            .iter()
-            .map(|bit| self.distribution[*bit])
-            .collect()
+        bits.iter().map(|bit| self.distribution[*bit]).collect()
     }
 
     fn is_valid_check(&self, check: &[usize]) -> bool {
@@ -461,7 +458,7 @@ enum CheckDegreeCondition {
 struct RandomBitGenerator<'a, R: Rng> {
     availables: Vec<usize>,
     distribution: Vec<f64>,
-    random_number_generator: &'a mut R
+    random_number_generator: &'a mut R,
 }
 
 impl<'a, R: Rng> RandomBitGenerator<'a, R> {
@@ -480,19 +477,31 @@ mod test {
     use rand::SeedableRng;
     use rand_chacha::ChaCha8Rng;
 
-    #[test] 
+    #[test]
     fn an_empty_generator_does_not_generate_checks() {
         let mut generator = Generator::new();
-        assert!(generator.set_target_check_degree(2).get_random_check().is_none());
+        assert!(generator
+            .set_target_check_degree(2)
+            .get_random_check()
+            .is_none());
     }
 
     #[test]
     fn a_generator_does_not_generate_checks_of_degree_less_than_minimal_check_degree() {
         let mut generator = Generator::with_n_bits(5);
         generator.allow_checks_of_degree_at_least(2);
-        assert!(generator.set_target_check_degree(0).get_random_check().is_none());
-        assert!(generator.set_target_check_degree(1).get_random_check().is_none());
-        assert!(generator.set_target_check_degree(2).get_random_check().is_some());
+        assert!(generator
+            .set_target_check_degree(0)
+            .get_random_check()
+            .is_none());
+        assert!(generator
+            .set_target_check_degree(1)
+            .get_random_check()
+            .is_none());
+        assert!(generator
+            .set_target_check_degree(2)
+            .get_random_check()
+            .is_some());
     }
 
     #[test]
@@ -569,9 +578,9 @@ mod test {
 
     #[test]
     fn a_generator_does_not_create_cycle_of_length_two_and_four_if_minimal_girth_is_six() {
-        let mut generator = Generator::with_n_bits(3)
-            .with_random_number_generator(ChaCha8Rng::seed_from_u64(10));
-        
+        let mut generator =
+            Generator::with_n_bits(3).with_random_number_generator(ChaCha8Rng::seed_from_u64(10));
+
         generator.set_maximal_bit_degree(2).set_minimal_girth(6);
 
         let first_check = generator.set_target_check_degree(3).get_random_check();
@@ -588,12 +597,10 @@ mod test {
 
     #[test]
     fn a_generator_does_not_create_cycle_of_length_two_four_and_six_if_minimal_girth_is_eight() {
-        let mut generator = Generator::with_n_bits(5)
-            .with_random_number_generator(ChaCha8Rng::seed_from_u64(10));
-        
-        generator    
-            .set_maximal_bit_degree(2)
-            .set_minimal_girth(8);
+        let mut generator =
+            Generator::with_n_bits(5).with_random_number_generator(ChaCha8Rng::seed_from_u64(10));
+
+        generator.set_maximal_bit_degree(2).set_minimal_girth(8);
 
         let first_check = generator
             .set_over_bits(vec![0, 1, 2])
@@ -617,10 +624,10 @@ mod test {
 
     #[test]
     fn a_generator_can_generate_check_according_to_a_bit_distribution() {
-        let mut generator = Generator::with_n_bits(5)
-            .with_random_number_generator(ChaCha8Rng::seed_from_u64(10));
-        
-        generator    
+        let mut generator =
+            Generator::with_n_bits(5).with_random_number_generator(ChaCha8Rng::seed_from_u64(10));
+
+        generator
             .set_maximal_bit_degree(2)
             .set_distribution(vec![0.25, 0.25, 0.0, 0.25, 0.25])
             .set_over_bits(vec![0, 1, 2])
@@ -628,7 +635,7 @@ mod test {
 
         // Can't generate 3 bits from this distribution over the first 3.
         assert_eq!(generator.get_random_check(), None);
-        
+
         generator.set_target_check_degree(2);
         assert_eq!(generator.get_random_check(), Some(vec![0, 1]));
         assert_eq!(generator.get_random_check(), Some(vec![0, 1]));

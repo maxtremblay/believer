@@ -1,4 +1,4 @@
-use super::{ParityCheckMatrix, Check, CheckView};
+use super::{Check, CheckView, ParityCheckMatrix};
 use itertools::EitherOrBoth;
 use itertools::Itertools;
 
@@ -12,7 +12,10 @@ impl<'a> Concatener<'a> {
         left_matrix: &'a ParityCheckMatrix,
         right_matrix: &'a ParityCheckMatrix,
     ) -> Self {
-        Self { left_matrix, right_matrix }
+        Self {
+            left_matrix,
+            right_matrix,
+        }
     }
 
     pub(super) fn concat_horizontally(&self) -> ParityCheckMatrix {
@@ -33,7 +36,7 @@ impl<'a> Concatener<'a> {
         match checks {
             EitherOrBoth::Both(left_check, right_check) => self.concat(left_check, right_check),
             EitherOrBoth::Left(check) => check.to_vec(),
-            EitherOrBoth::Right(check) => self.pad_right_check(check)
+            EitherOrBoth::Right(check) => self.pad_right_check(check),
         }
     }
 
@@ -44,7 +47,10 @@ impl<'a> Concatener<'a> {
     }
 
     fn pad_right_check(&self, check: CheckView) -> Check {
-        check.iter().map(|bit| bit + self.left_matrix.get_n_bits()).collect()
+        check
+            .iter()
+            .map(|bit| bit + self.left_matrix.get_n_bits())
+            .collect()
     }
 
     pub(super) fn concat_diagonally(&self) -> ParityCheckMatrix {
@@ -62,11 +68,17 @@ impl<'a> Concatener<'a> {
     }
 
     fn get_all_left_checks(&self) -> Vec<Check> {
-        self.left_matrix.checks_iter().map(|check| check.to_vec()).collect()
+        self.left_matrix
+            .checks_iter()
+            .map(|check| check.to_vec())
+            .collect()
     }
 
     fn get_all_padded_right_checks(&self) -> Vec<Check> {
-        self.right_matrix.checks_iter().map(|check| self.pad_right_check(check)).collect()
+        self.right_matrix
+            .checks_iter()
+            .map(|check| self.pad_right_check(check))
+            .collect()
     }
 }
 
@@ -76,8 +88,8 @@ mod test {
 
     #[test]
     fn horizontal_concat_with_empty_matrix() {
-        let left_matrix = ParityCheckMatrix::with_n_bits(4)
-            .with_checks(vec![vec![0, 1], vec![1, 2, 3]]);
+        let left_matrix =
+            ParityCheckMatrix::with_n_bits(4).with_checks(vec![vec![0, 1], vec![1, 2, 3]]);
 
         let right_matrix = ParityCheckMatrix::new();
 
@@ -90,9 +102,8 @@ mod test {
     fn horizontal_concat_from_empty_matrix() {
         let left_matrix = ParityCheckMatrix::new();
 
-        let right_matrix = ParityCheckMatrix::with_n_bits(4)
-            .with_checks(vec![vec![0, 1], vec![1, 2, 3]]);
-
+        let right_matrix =
+            ParityCheckMatrix::with_n_bits(4).with_checks(vec![vec![0, 1], vec![1, 2, 3]]);
 
         let concatened = Concatener::from(&left_matrix, &right_matrix).concat_horizontally();
 
@@ -101,52 +112,63 @@ mod test {
 
     #[test]
     fn horizontal_concat_with_smaller_left_matrix() {
-        let left_matrix = ParityCheckMatrix::with_n_bits(4)
-            .with_checks(vec![vec![0, 1], vec![1, 2, 3]]);
+        let left_matrix =
+            ParityCheckMatrix::with_n_bits(4).with_checks(vec![vec![0, 1], vec![1, 2, 3]]);
 
-        let right_matrix = ParityCheckMatrix::with_n_bits(3)
-            .with_checks(vec![vec![0, 1], vec![1, 2], vec![0, 2]]);
+        let right_matrix =
+            ParityCheckMatrix::with_n_bits(3).with_checks(vec![vec![0, 1], vec![1, 2], vec![0, 2]]);
 
         let concatened = Concatener::from(&left_matrix, &right_matrix).concat_horizontally();
-        let expected = ParityCheckMatrix::with_n_bits(7)
-            .with_checks(vec![vec![0, 1, 4, 5], vec![1, 2, 3, 5, 6], vec![4, 6]]);
+        let expected = ParityCheckMatrix::with_n_bits(7).with_checks(vec![
+            vec![0, 1, 4, 5],
+            vec![1, 2, 3, 5, 6],
+            vec![4, 6],
+        ]);
 
         assert_eq!(concatened, expected);
     }
 
     #[test]
     fn horizontal_concat_with_smaller_right_matrix() {
-        let left_matrix = ParityCheckMatrix::with_n_bits(3)
-            .with_checks(vec![vec![0, 1], vec![1, 2], vec![0, 2]]);
-        let right_matrix = ParityCheckMatrix::with_n_bits(4)
-            .with_checks(vec![vec![0, 1], vec![1, 2, 3]]);
+        let left_matrix =
+            ParityCheckMatrix::with_n_bits(3).with_checks(vec![vec![0, 1], vec![1, 2], vec![0, 2]]);
+        let right_matrix =
+            ParityCheckMatrix::with_n_bits(4).with_checks(vec![vec![0, 1], vec![1, 2, 3]]);
 
         let concatened = Concatener::from(&left_matrix, &right_matrix).concat_horizontally();
-        let expected = ParityCheckMatrix::with_n_bits(7)
-            .with_checks(vec![vec![0, 1, 3, 4], vec![1, 2, 4, 5, 6], vec![0, 2]]);
+        let expected = ParityCheckMatrix::with_n_bits(7).with_checks(vec![
+            vec![0, 1, 3, 4],
+            vec![1, 2, 4, 5, 6],
+            vec![0, 2],
+        ]);
 
         assert_eq!(concatened, expected);
     }
 
     #[test]
     fn horizontal_concat_with_equal_length_matrices() {
-        let left_matrix = ParityCheckMatrix::with_n_bits(4)
-            .with_checks(vec![vec![0, 1], vec![1, 2], vec![2, 3]]);
-        let right_matrix = ParityCheckMatrix::with_n_bits(4)
-            .with_checks(vec![vec![0, 1], vec![1, 2, 3], vec![0, 2, 3]]);
+        let left_matrix =
+            ParityCheckMatrix::with_n_bits(4).with_checks(vec![vec![0, 1], vec![1, 2], vec![2, 3]]);
+        let right_matrix = ParityCheckMatrix::with_n_bits(4).with_checks(vec![
+            vec![0, 1],
+            vec![1, 2, 3],
+            vec![0, 2, 3],
+        ]);
 
         let concatened = Concatener::from(&left_matrix, &right_matrix).concat_horizontally();
-        let expected = ParityCheckMatrix::with_n_bits(8)
-            .with_checks(vec![vec![0, 1, 4, 5], vec![1, 2, 5, 6 ,7], vec![2, 3, 4, 6, 7]]);
+        let expected = ParityCheckMatrix::with_n_bits(8).with_checks(vec![
+            vec![0, 1, 4, 5],
+            vec![1, 2, 5, 6, 7],
+            vec![2, 3, 4, 6, 7],
+        ]);
 
         assert_eq!(concatened, expected);
     }
 
-
     #[test]
     fn diagonal_concat_with_empty_matrix() {
-        let left_matrix = ParityCheckMatrix::with_n_bits(4)
-            .with_checks(vec![vec![0, 1], vec![1, 2], vec![2, 3]]);
+        let left_matrix =
+            ParityCheckMatrix::with_n_bits(4).with_checks(vec![vec![0, 1], vec![1, 2], vec![2, 3]]);
         let right_matrix = ParityCheckMatrix::new();
 
         let concatened = Concatener::from(&left_matrix, &right_matrix).concat_diagonally();
@@ -154,13 +176,12 @@ mod test {
         assert_eq!(concatened, left_matrix);
     }
 
-
     #[test]
     fn diagonal_concat_from_empty_matrix() {
         let left_matrix = ParityCheckMatrix::new();
 
-        let right_matrix = ParityCheckMatrix::with_n_bits(4)
-            .with_checks(vec![vec![0, 1], vec![1, 2], vec![2, 3]]);
+        let right_matrix =
+            ParityCheckMatrix::with_n_bits(4).with_checks(vec![vec![0, 1], vec![1, 2], vec![2, 3]]);
 
         let concatened = Concatener::from(&left_matrix, &right_matrix).concat_diagonally();
 
@@ -169,14 +190,19 @@ mod test {
 
     #[test]
     fn diagonal_concat() {
-        let left_matrix = ParityCheckMatrix::with_n_bits(4)
-            .with_checks(vec![vec![0, 1], vec![1, 2], vec![2, 3]]);
-        let right_matrix = ParityCheckMatrix::with_n_bits(4)
-            .with_checks(vec![vec![0, 1], vec![1, 2, 3]]);
+        let left_matrix =
+            ParityCheckMatrix::with_n_bits(4).with_checks(vec![vec![0, 1], vec![1, 2], vec![2, 3]]);
+        let right_matrix =
+            ParityCheckMatrix::with_n_bits(4).with_checks(vec![vec![0, 1], vec![1, 2, 3]]);
 
         let concatened = Concatener::from(&left_matrix, &right_matrix).concat_diagonally();
-        let expected = ParityCheckMatrix::with_n_bits(8)
-            .with_checks(vec![vec![0, 1], vec![1, 2], vec![2, 3], vec![4, 5], vec![5, 6, 7]]);
+        let expected = ParityCheckMatrix::with_n_bits(8).with_checks(vec![
+            vec![0, 1],
+            vec![1, 2],
+            vec![2, 3],
+            vec![4, 5],
+            vec![5, 6, 7],
+        ]);
 
         assert_eq!(concatened, expected);
     }

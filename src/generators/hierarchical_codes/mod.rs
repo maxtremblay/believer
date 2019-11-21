@@ -1,5 +1,5 @@
-use super::CodeGenerator;
 use super::random_checks::Generator as CheckGenerator;
+use super::CodeGenerator;
 use crate::ParityCheckMatrix;
 
 mod code_constructor;
@@ -18,7 +18,7 @@ pub struct Generator {
 
 impl Generator {
     // ***** Construction *****
-    
+
     pub fn new() -> Self {
         Self {
             bit_degree: 0,
@@ -31,7 +31,9 @@ impl Generator {
     }
 
     pub fn with_bit_and_check_degree(bit_degree: usize, check_degree: usize) -> Self {
-        Self::new().with_bit_degree(bit_degree).with_check_degree(check_degree)
+        Self::new()
+            .with_bit_degree(bit_degree)
+            .with_check_degree(check_degree)
     }
 
     fn with_bit_degree(mut self, degree: usize) -> Self {
@@ -102,8 +104,7 @@ impl Generator {
     }
 
     fn generate_non_empty_code_with_rng<R: Rng>(&self, rng: R) -> ParityCheckMatrix {
-        self.get_code_constructor_with_rng(rng)
-            .get_random_code()
+        self.get_code_constructor_with_rng(rng).get_random_code()
     }
 
     fn get_code_constructor_with_rng<R: Rng>(&self, rng: R) -> CodeConstructor<R> {
@@ -114,13 +115,13 @@ impl Generator {
             n_layers: self.n_layers,
             n_bits: self.get_n_bits(),
             n_blocks_per_layer: self.n_blocks_per_layer,
-            n_checks_per_block: self.n_checks_per_block
+            n_checks_per_block: self.n_checks_per_block,
         }
     }
 
     fn initialize_check_generator_with_rng<R: Rng>(&self, rng: R) -> CheckGenerator<R> {
-        let mut generator = CheckGenerator::with_n_bits(self.get_n_bits())
-            .with_random_number_generator(rng);
+        let mut generator =
+            CheckGenerator::with_n_bits(self.get_n_bits()).with_random_number_generator(rng);
         generator
             .set_maximal_bit_degree(self.bit_degree)
             .set_target_check_degree(self.check_degree)
@@ -148,10 +149,7 @@ mod test {
     #[test]
     fn default_constructor_generate_empty_code() {
         let generator = Generator::new();
-        assert_eq!(
-            generator.generate(),
-            ParityCheckMatrix::new()
-        );
+        assert_eq!(generator.generate(), ParityCheckMatrix::new());
     }
 
     #[test]

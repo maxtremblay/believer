@@ -1,10 +1,10 @@
-use crate::GF2; 
+use crate::GF2;
 use std::cmp::min;
 
-/// Represent one check in a parity check matrix. 
+/// Represent one check in a parity check matrix.
 pub type Check = Vec<usize>;
 
-/// A reference to a check. 
+/// A reference to a check.
 pub type CheckSlice<'a> = &'a [usize];
 
 pub fn get_dot_product(left_check: CheckSlice, right_check: CheckSlice) -> GF2 {
@@ -19,7 +19,7 @@ struct Dotter<'a> {
     sum: GF2,
 }
 
-impl<'a> Dotter<'a>{
+impl<'a> Dotter<'a> {
     fn from_checks(left_check: CheckSlice<'a>, right_check: CheckSlice<'a>) -> Self {
         Self {
             left_check,
@@ -27,7 +27,7 @@ impl<'a> Dotter<'a>{
             left_index: 0,
             right_index: 0,
             sum: GF2::B0,
-        }        
+        }
     }
 
     fn get_dot_product(mut self) -> GF2 {
@@ -39,10 +39,8 @@ impl<'a> Dotter<'a>{
     }
 
     fn has_not_reach_the_end_of_a_check(&self) -> bool {
-        self.left_index < self.left_check.len()
-            && self.right_index < self.right_check.len()
+        self.left_index < self.left_check.len() && self.right_index < self.right_check.len()
     }
-
 
     fn update_sum_from_active_bits(&mut self) {
         if self.get_active_left_bit() == self.get_active_right_bit() {
@@ -82,11 +80,10 @@ pub fn get_bitwise_sum(left_check: CheckSlice, right_check: CheckSlice) -> Check
     BitwiseSummer::from_checks(left_check, right_check).get_bitwise_sum()
 }
 
-
 // pub(super) fn get_bitwise_sum(left_check: CheckSlice, right_check: CheckSlice) -> Check {
 //     let mut sum = Vec::new();
 //     BinarySparseOperator::with_operation(|left_bit, right_bit| {
-//         if left_bit != right_bit { 
+//         if left_bit != right_bit {
 //             println!("Left {} // Right {}", left_bit, right_bit);
 //             sum.push(min(left_bit, right_bit));
 //             println!("Sum: {:?}", sum);
@@ -113,7 +110,7 @@ impl<'a> BitwiseSummer<'a> {
             left_index: 0,
             right_index: 0,
             sum: Check::new(),
-        }        
+        }
     }
 
     fn get_bitwise_sum(mut self) -> Check {
@@ -126,8 +123,7 @@ impl<'a> BitwiseSummer<'a> {
     }
 
     fn has_not_reach_the_end_of_a_check(&self) -> bool {
-        self.left_index < self.left_check.len()
-            && self.right_index < self.right_check.len()
+        self.left_index < self.left_check.len() && self.right_index < self.right_check.len()
     }
 
     fn update_sum_from_active_bits(&mut self) {
@@ -167,9 +163,11 @@ impl<'a> BitwiseSummer<'a> {
 
     fn fill_sum_with_leftovers(&mut self) {
         if self.left_index < self.left_check.len() {
-            self.sum.extend_from_slice(&self.left_check[self.left_index..])
+            self.sum
+                .extend_from_slice(&self.left_check[self.left_index..])
         } else {
-            self.sum.extend_from_slice(&self.right_check[self.right_index..])
+            self.sum
+                .extend_from_slice(&self.right_check[self.right_index..])
         }
     }
 }
@@ -206,6 +204,9 @@ mod test {
 
         let left_check = vec![0, 1, 3, 5, 8];
         let right_check = vec![];
-        assert_eq!(get_bitwise_sum(&left_check, &right_check), vec![0, 1, 3, 5, 8]);
+        assert_eq!(
+            get_bitwise_sum(&left_check, &right_check),
+            vec![0, 1, 3, 5, 8]
+        );
     }
 }

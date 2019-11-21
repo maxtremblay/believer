@@ -1,9 +1,9 @@
 //! An iterator over the checks of a parity check matrix.
 
-use super::{ParityCheckMatrix, CheckView};
+use super::{CheckView, ParityCheckMatrix};
 
 /// An iterator over the checks of a parity check matrix.
-/// 
+///
 /// Returns a `CheckView` at each iteration.
 pub struct ChecksIter<'a> {
     matrix: &'a ParityCheckMatrix,
@@ -12,7 +12,10 @@ pub struct ChecksIter<'a> {
 
 impl<'a> ChecksIter<'a> {
     pub(super) fn from(matrix: &'a ParityCheckMatrix) -> Self {
-        Self { matrix, active_check: 0 }
+        Self {
+            matrix,
+            active_check: 0,
+        }
     }
 }
 

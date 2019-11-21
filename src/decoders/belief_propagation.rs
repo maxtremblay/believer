@@ -144,11 +144,10 @@ impl<C: BinaryChannel> BPDecoder<C> {
     fn init_likelyhoods(&self, message: &[GF2]) -> Likelyhoods<C> {
         let intrinsec = self.channel.message_likelyhood(message);
         let total = intrinsec.clone();
-        let extrinsec =
-            SparseMatrix::from_parity_check(
-                &self.parity_check, 
-                vec![0.0; self.parity_check.get_n_edges()]
-            );
+        let extrinsec = SparseMatrix::from_parity_check(
+            &self.parity_check,
+            vec![0.0; self.parity_check.get_n_edges()],
+        );
         Likelyhoods {
             decoder: &self,
             total,
@@ -373,8 +372,8 @@ mod test {
     fn repetition_code() {
         // Tests with a 3 bits repetition code over a bsc with error probability of 0.2.
         let channel = BinarySymmetricChannel::new(0.2);
-        let parity_check = ParityCheckMatrix::with_n_bits(3)
-            .with_checks(vec![vec![0, 1], vec![1, 2]]);
+        let parity_check =
+            ParityCheckMatrix::with_n_bits(3).with_checks(vec![vec![0, 1], vec![1, 2]]);
         let decoder = BPDecoder::new(channel, parity_check, 5);
 
         // Should decode 1 error.
@@ -390,8 +389,11 @@ mod test {
         let channel = BinarySymmetricChannel::new(0.2);
         let max_iters = 10;
         let builder = BPDecoderBuilder::new(channel, max_iters);
-        let checks = ParityCheckMatrix::with_n_bits(7)
-            .with_checks(vec![vec![0, 1, 2, 4], vec![0, 1, 3, 5], vec![0, 2, 3, 6]]);
+        let checks = ParityCheckMatrix::with_n_bits(7).with_checks(vec![
+            vec![0, 1, 2, 4],
+            vec![0, 1, 3, 5],
+            vec![0, 2, 3, 6],
+        ]);
         let decoder = builder.build_from(checks);
 
         // Should decode no error
