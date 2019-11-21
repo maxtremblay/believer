@@ -2,7 +2,8 @@
 
 use super::{Decoder, DecodingResult};
 use crate::ParityCheckMatrix;
-use rand::Rng;
+use rand::{Rng, thread_rng};
+use rand::rngs::ThreadRng;
 
 /// Decoder for classical erasure channel.
 ///
@@ -30,8 +31,8 @@ impl ErasureDecoder {
             panic!("invalid probability");
         }
         Self {
-            code: ParityCheckMatrix::new(),
             erasure_prob,
+            code: ParityCheckMatrix::new(),
         }
     }
 
@@ -40,11 +41,14 @@ impl ErasureDecoder {
         self.code = code;
         self
     }
+
+    fn next_bit_is_erased_with_rng<R: Rng>(&self, rng: &mut R) -> bool {
+        rng.gen::<f64>() < self.erasure_prob
+    }
 }
 
 impl Decoder for ErasureDecoder {
-    // The error is the positions of the erased bits.
-    type Error = Vec<usize>;
+    type Error = Vec<usize>; // Positions of erased bits.
     type Result = ErasureResult;
     type Code = ParityCheckMatrix;
 
@@ -69,9 +73,9 @@ impl Decoder for ErasureDecoder {
     }
 
     // Erase random bits with given probability.
-    fn get_random_error_with_rng<R: Rng>(&self, rng: &mut R) -> Vec<usize> {
+    fn get_random_error_with_rng<R: Rng>(&self, rng: &mut R) -> Self::Error {
         (0..self.code.get_n_bits())
-            .filter(|_| rng.gen::<f64>() < self.erasure_prob)
+            .filter(|_| self.next_bit_is_erased(rng))
             .collect()
     }
 }

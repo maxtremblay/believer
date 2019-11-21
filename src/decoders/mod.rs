@@ -1,5 +1,7 @@
 //! Toolbox for decoding.
 
+use rand::{Rng, thread_rng};
+
 pub mod simulation_results;
 pub use simulation_results::SimulationResult;
 
@@ -12,8 +14,8 @@ use n_events_simulator::NEventsSimulator;
 // pub mod belief_propagation;
 // pub use belief_propagation::*;
 
-// pub mod erasure;
-// pub use erasure::*;
+pub mod erasure;
+pub use erasure::*;
 
 // pub mod quantum_erasure;
 // pub use quantum_erasure::{QuantumErasureDecoder, QuantumErasureDecoderBuilder};
@@ -50,10 +52,18 @@ pub trait Decoder: Send + Sync + Sized {
     }
 
     /// Simulates decoding random error using `self` for `n_iterations`. 
-    fn simulate_n_iterations(&self, n_iterations: u64) -> SimulationResult {
+    fn simulate_n_iterations_with_rng<R: Rng>(
+        &self, 
+        n_iterations: u64,
+        rng: &mut R
+    ) -> SimulationResult {
         NIterationsSimulator::from(self)
             .simulate_n_iterations(n_iterations)
             .get_result()
+    }
+
+    fn simulate_n_iterations(&self, n_iterations: u64) -> SimulationResult {
+        self.simulate_n_iterations_with_rng(n_iterations, &mut thread_rng())
     }
 
     /// Simulates the decoder until `n_events` are found. 
