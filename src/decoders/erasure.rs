@@ -1,8 +1,8 @@
 //! A classical erasure decoder.
 
-use super::{Decoder, DecoderBuilder, DecodingResult};
+use super::{Decoder, DecodingResult};
 use crate::ParityCheckMatrix;
-use rand::{thread_rng, Rng};
+use rand::Rng;
 
 /// Decoder for classical erasure channel.
 ///
@@ -10,13 +10,12 @@ use rand::{thread_rng, Rng};
 ///
 /// ```
 /// # use believer::*;
-/// let checks = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2]], 3);
-/// let erasure_prob = 0.25;
-/// let decoder = ErasureDecoder::new(checks, erasure_prob);
+/// let code = ParityCheckMatrix::with_n_bits(3).with_checks(vec![vec![0, 1], vec![1, 2]]);
+/// let decoder = ErasureDecoder::with_prob(0.25).with_code(code);
 /// decoder.decode(&decoder.random_error());
 /// ```
 pub struct ErasureDecoder {
-    checks: ParityCheckMatrix,
+    code: ParityCheckMatrix,
     erasure_prob: f64,
 }
 
@@ -26,19 +25,20 @@ impl ErasureDecoder {
     /// # Panic
     ///
     /// Panics if `erasure_prob` is not between 0.0 and 1.0.
-    pub fn new(checks: ParityCheckMatrix, erasure_prob: f64) -> Self {
+    pub fn with_prob(erasure_prob: f64) -> Self {
         if erasure_prob < 0.0 || erasure_prob > 1.0 {
             panic!("invalid probability");
         }
         Self {
-            checks,
+            code: ParityCheckMatrix::new(),
             erasure_prob,
         }
     }
 
-    /// Returns the number of bit the decoder is acting on.
-    pub fn n_bits(&self) -> usize {
-        self.checks.get_n_bits()
+    /// Set the code of self to `code` consuming it.
+    pub fn with_code(mut self, code: ParityCheckMatrix) -> Self {
+        self.code = code;
+        self
     }
 }
 
@@ -46,13 +46,21 @@ impl Decoder for ErasureDecoder {
     // The error is the positions of the erased bits.
     type Error = Vec<usize>;
     type Result = ErasureResult;
-    type Checks = ParityCheckMatrix;
+    type Code = ParityCheckMatrix;
+
+    fn set_code(&mut self, code: Self::Code) {
+        self.code = code;
+    }
+
+    fn take_code(&mut self) -> Self::Code {
+        std::mem::replace(&mut self.code, ParityCheckMatrix::new())
+    }
 
     // An erasure error can be corrected if there is no information in the erased submatrix. That
     // is, the number of erased bits is equal to the rank of the parity check matrix restricted to
     // the erased bit columns.
     fn decode(&self, error: &Self::Error) -> Self::Result {
-        let erased_parity_check = self.checks.keep(error);
+        let erased_parity_check = self.code.keep(error);
         if error.len() - erased_parity_check.get_rank() == 0 {
             ErasureResult::Success
         } else {
@@ -61,56 +69,10 @@ impl Decoder for ErasureDecoder {
     }
 
     // Erase random bits with given probability.
-    fn random_error(&self) -> Vec<usize> {
-        let mut rng = thread_rng();
-        (0..self.checks.get_n_bits())
+    fn get_random_error_with_rng<R: Rng>(&self, rng: &mut R) -> Vec<usize> {
+        (0..self.code.get_n_bits())
             .filter(|_| rng.gen::<f64>() < self.erasure_prob)
             .collect()
-    }
-
-    fn take_checks(&mut self) -> Self::Checks {
-        std::mem::replace(&mut self.checks, ParityCheckMatrix::new())
-    }
-}
-
-/// Builder for ErasureDecoder
-///
-/// # Example
-///
-/// ```
-/// # use believer::*;
-/// let erasure_prob = 0.25;
-/// let builder = ErasureDecoderBuilder::new(erasure_prob);
-/// let checks = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2]], 3);
-/// let decoder = builder.build_from(checks);
-///
-/// let other_checks = ParityCheckMatrix::new(vec![vec![0, 1], vec![0, 2]], 3);
-/// let other_decoder = builder.build_from(other_checks);
-/// ```
-pub struct ErasureDecoderBuilder {
-    erasure_prob: f64,
-}
-
-impl ErasureDecoderBuilder {
-    /// Creates an erasure decoder builder.
-    ///
-    /// # Panic
-    ///
-    /// Panics if `erasure_prob` is not between 0.0 and 1.0.
-    pub fn new(erasure_prob: f64) -> Self {
-        if erasure_prob < 0.0 || erasure_prob > 1.0 {
-            panic!("invalid probability");
-        }
-        Self { erasure_prob }
-    }
-}
-
-impl DecoderBuilder for ErasureDecoderBuilder {
-    type Checks = ParityCheckMatrix;
-    type Decoder = ErasureDecoder;
-
-    fn build_from(&self, checks: Self::Checks) -> Self::Decoder {
-        ErasureDecoder::new(checks, self.erasure_prob)
     }
 }
 
@@ -134,8 +96,8 @@ mod test {
 
     #[test]
     fn repetition_code() {
-        let matrix = ParityCheckMatrix::with_n_bits(3).with_checks(vec![vec![0, 1], vec![1, 2]]);
-        let decoder = ErasureDecoder::new(matrix, 0.2);
+        let code = ParityCheckMatrix::with_n_bits(3).with_checks(vec![vec![0, 1], vec![1, 2]]);
+        let decoder = ErasureDecoder::with_prob(0.2).with_code(code);
 
         assert_eq!(decoder.decode(&vec![]), ErasureResult::Success);
         for i in 0..=2 {
@@ -148,14 +110,13 @@ mod test {
     }
 
     #[test]
-    fn hamming_code_with_builder() {
-        let decoder_builder = ErasureDecoderBuilder::new(0.25);
+    fn hamming_code() {
         let code = ParityCheckMatrix::with_n_bits(7).with_checks(vec![
             vec![0, 1, 2, 4],
             vec![0, 1, 3, 5],
             vec![0, 2, 3, 6],
         ]);
-        let decoder = decoder_builder.build_from(code);
+        let decoder = ErasureDecoder::with_prob(0.25).with_code(code);
 
         assert_eq!(decoder.decode(&vec![]), ErasureResult::Success);
         for i in 0..=6 {

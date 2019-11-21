@@ -1,3 +1,5 @@
+use super::DecodingResult;
+
 /// An interface for simulation result. 
 pub struct SimulationResult {
     n_successes: u64,
@@ -7,14 +9,35 @@ pub struct SimulationResult {
 impl SimulationResult {
     // ***** Construction *****
 
-    /// Creates a new `SimulationResult` from the number of successes and failures.
-    pub fn with_n_successes_and_failures(n_successes: u64, n_failures: u64) -> Self {
+    // Creates a new empty `SimulationResult`.
+    pub(super) fn new() -> Self {
+        Self { n_successes: 0, n_failures: 0 }
+    }
+
+    // Creates a new `SimulationResult` from the number of successes and failures.
+    pub(super) fn with_n_successes_and_failures(n_successes: u64, n_failures: u64) -> Self {
         Self { n_successes, n_failures }
     }
 
-    /// Creates the worse `SimulationResult`. That is, a simulation with failure rate 1.
-    pub fn worse_result() -> Self {
+    // Creates the worse `SimulationResult`. That is, a simulation with failure rate 1.
+    pub(super) fn worse_result() -> Self {
         Self { n_successes: 0, n_failures: 1 }
+    }
+
+    // ***** Updaters *****
+
+    pub(super) fn add_many_decoding_results<R: DecodingResult>(&mut self, results: &[R]) {
+        for result in results {
+            self.add_decoding_result(result);
+        }
+    }
+
+    pub(super) fn add_decoding_result<R: DecodingResult>(&mut self, result: &R) {
+        if result.is_success() {
+            self.n_successes += 1;
+        } else {
+            self.n_failures += 1;
+        }
     }
 
     // ***** Getters *****
