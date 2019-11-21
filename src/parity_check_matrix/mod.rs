@@ -83,12 +83,14 @@ impl ParityCheckMatrix {
     /// let mut matrix = ParityCheckMatrix::with_n_bits(3).with_checks(checks);
     /// ```
     pub fn with_checks(mut self, checks: Vec<Check>) -> Self {
-        if self.some_checks_are_out_of_bounds(&checks) {
-            panic!("some checks are out of bounds");
+        if !checks.is_empty() {
+            if self.some_checks_are_out_of_bounds(&checks) {
+                panic!("some checks are out of bounds");
+            }
+            self.init_bit_indices(&checks);
+            self.init_check_ranges(&checks);
+            self.fill_with(checks);
         }
-        self.init_bit_indices(&checks);
-        self.init_check_ranges(&checks);
-        self.fill_with(checks);
         self
     }
 
@@ -287,15 +289,17 @@ impl ParityCheckMatrix {
     /// assert_eq!(transposed_matrix, expected_matrix);
     /// ```
     pub fn get_transposed_matrix(&self) -> Self {
-        let checks = self.get_transposed_checks();
-        Self::with_n_bits(self.get_n_checks()).with_checks(checks)
+        Transposer::from(self).get_transposed_matrix()
     }
+    //     let checks = self.get_transposed_checks();
+    //     Self::with_n_bits(self.get_n_checks()).with_checks(checks)
+    // }
 
-    fn get_transposed_checks(&self) -> Vec<Check> {
-        let mut transposer = Transposer::new();
-        self.checks_iter().for_each(|check| transposer.insert_bits_from(check));
-        transposer.get_checks()
-    }
+    // fn get_transposed_checks(&self) -> Vec<Check> {
+    //     let mut transposer = Transposer::new();
+    //     self.checks_iter().for_each(|check| transposer.insert_bits_from(check));
+    //     transposer.get_checks()
+    // }
 
     /// Returns the horizontal concatenation of `self` with `other`.
     /// 
