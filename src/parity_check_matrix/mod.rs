@@ -291,15 +291,6 @@ impl ParityCheckMatrix {
     pub fn get_transposed_matrix(&self) -> Self {
         Transposer::from(self).get_transposed_matrix()
     }
-    //     let checks = self.get_transposed_checks();
-    //     Self::with_n_bits(self.get_n_checks()).with_checks(checks)
-    // }
-
-    // fn get_transposed_checks(&self) -> Vec<Check> {
-    //     let mut transposer = Transposer::new();
-    //     self.checks_iter().for_each(|check| transposer.insert_bits_from(check));
-    //     transposer.get_checks()
-    // }
 
     /// Returns the horizontal concatenation of `self` with `other`.
     /// 
