@@ -1,26 +1,36 @@
-// use crate::ParityCheckMatrix;
+//! Toolbox for decoding.
+
+use rand::{Rng, thread_rng};
 
 /// An interface to deal with decoders
 ///
 /// This is the global decoder trait. For more details, see each decoder implementation.
 pub trait Decoder: Send + Sync {
+    /// The type of code the decoder is using.
+    type Code;
+
     /// The type of error that the decoder can decode.
     type Error;
 
     /// The type of result the decoder is returning.
     type Result: DecodingResult;
 
-    /// The type of checks the decoder is using.
-    type Checks;
+    /// Set self to use `code` without changing the other parameter. This consume `code`
+    fn set_code(&mut self, code: Self::Code);
+
+    /// Takes the `code` out of the decoder leaving an empty set of code instead.
+    fn take_code(&mut self) -> Self::Code;
 
     /// Tries to decode a given error.
     fn decode(&self, error: &Self::Error) -> Self::Result;
 
-    /// Generates a random error.
-    fn random_error(&self) -> Self::Error;
+    fn get_random_error_with_rng<R: Rng>(&self, rng: &mut R) -> Self::Error;
 
-    /// Takes the `checks` out of the decoder leaving an empty set of checks instead.
-    fn take_checks(&mut self) -> Self::Checks;
+    /// Generates a random error.
+    fn get_random_error(&self) -> Self::Error {
+        self.get_random_error_with_rng(&mut thread_rng())
+    }  
+
 }
 
 /// An interface for decoder outcome.
@@ -37,24 +47,8 @@ pub trait DecodingResult: Send + Sync {
     }
 }
 
-/// A tool to build decoder.
-///
-/// It is often useful to construct decoders with the same parameters by varying only the checks.
-/// A `DecoderBuilder` can be set from a set of parameters and generate a decoder when some checks
-/// are specified. See different implementations for more details.
-pub trait DecoderBuilder {
-    /// The type of checks the decoder is using.
-    type Checks;
-
-    /// The type of decoder to build.
-    type Decoder;
-
-    /// Returns a `Decoder` build from the given `checks`.
-    fn build_from(&self, checks: Self::Checks) -> Self::Decoder;
-}
-
-pub mod belief_propagation;
-pub use belief_propagation::*;
+// pub mod belief_propagation;
+// pub use belief_propagation::*;
 
 pub mod erasure;
 pub use erasure::*;
