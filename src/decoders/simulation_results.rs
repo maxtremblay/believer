@@ -26,17 +26,10 @@ impl SimulationResult {
 
     // ***** Updaters *****
 
-    pub(super) fn add_many_decoding_results<R: DecodingResult>(&mut self, results: &[R]) {
-        for result in results {
-            self.add_decoding_result(result);
-        }
-    }
-
-    pub(super) fn add_decoding_result<R: DecodingResult>(&mut self, result: &R) {
-        if result.is_success() {
-            self.n_successes += 1;
-        } else {
-            self.n_failures += 1;
+    pub(super) fn combine_with(&self, other: SimulationResult) -> Self {
+        Self {
+            n_successes: self.n_successes + other.n_successes,
+            n_failures: self.n_failures + other.n_failures,
         }
     }
 

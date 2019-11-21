@@ -1,13 +1,13 @@
 //! Toolbox for decoding.
 
-use rand::{Rng, thread_rng};
-use rayon::prelude::*;
-
 pub mod simulation_results;
 pub use simulation_results::SimulationResult;
 
 mod n_iterations_simulator;
 use n_iterations_simulator::NIterationsSimulator;
+
+mod n_events_simulator;
+use n_events_simulator::NEventsSimulator;
 
 /// An interface to deal with decoders
 ///
@@ -46,31 +46,12 @@ pub trait Decoder: Send + Sync + Sized {
             .get_result()
     }
 
-    // /// 
-    // fn simulate_until_n_events_are_found(&self, n_events: usize) -> SimulationResult {
-    //     NEventsSimulator::from(self)
-    //         .until_n_events_are_found(n_events)
-    //         .get_simulation_result()
-
-    //     // let (succ, fail) = (0..n_events)
-    //     //     .into_par_iter()
-    //     //     .map(|_| {
-    //     //         let mut successes = 0;
-    //     //         let mut failures = 0;
-    //     //         while successes == 0 || failures == 0 {
-    //     //             let error = self.get_random_error();
-    //     //             if self.decode(&error).is_success() {
-    //     //                 successes += 1;
-    //     //             } else {
-    //     //                 failures += 1;
-    //     //             }
-    //     //         }
-    //     //         (successes, failures)
-    //     //     })
-    //     //     .reduce(|| (0, 0), |(a_s, a_f), (s, f)| (a_s + s, a_f + f));
-
-    //     // SimulationResult::with_n_successes_and_failures(succ, fail)
-    // }
+    /// Simulates the decoder for `n_iterations`. 
+    fn simulate_until_n_events_are_found(&self, n_events: u64) -> SimulationResult {
+        NEventsSimulator::from(self)
+            .simulate_until_n_events_are_found(n_events)
+            .get_result()
+    }
 }
 
 /// An interface for decoder outcome.
