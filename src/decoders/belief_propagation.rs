@@ -333,7 +333,7 @@ impl<'a, C: BinaryChannel> Likelyhoods<'a, C> {
         let updated_values = self
             .decoder
             .parity_check
-            .positions_iter()
+            .edges_iter()
             .map(|(row, col)| {
                 self.extrinsec
                     .row_slice(row)

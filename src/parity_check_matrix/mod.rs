@@ -5,21 +5,24 @@ use itertools::EitherOrBoth::{Both, Left, Right};
 use itertools::Itertools;
 use std::ops::Add;
 
-pub mod check_view;
-pub use check_view::CheckView;
-
-mod transposer;
-use transposer::Transposer;
-
 pub mod check;
 pub use check::{Check, CheckSlice};
 use check::get_bitwise_sum;
 
+pub mod check_view;
+pub use check_view::CheckView;
+
 pub mod checks_iter;
 pub use checks_iter::ChecksIter;
 
+pub mod edges_iter;
+pub use edges_iter::EdgesIter;
+
 mod ranker;
 use ranker::Ranker;
+
+mod transposer;
+use transposer::Transposer;
 
 /// A sparse implementation of a parity check matrix.
 #[derive(Debug, PartialEq, Clone)]
@@ -315,21 +318,16 @@ impl ParityCheckMatrix {
         ChecksIter::from(self)
     }
 
-    /// Returns an iterators over all positions in `self` where the value
-    /// is 1. Positions are ordered by check first.
+    /// An iterators over all edges in `self` ordered by check first.
     ///
     /// # Example
     ///
     /// ```
     /// # use believer::*;
-    /// let parity_check = ParityCheckMatrix::new(
-    ///     vec![
-    ///         vec![0, 1],
-    ///         vec![1, 2],
-    ///     ],
-    ///     3
-    /// );
-    /// let mut iter = parity_check.positions_iter();
+    /// let parity_check = ParityCheckMatrix::with_n_bits(3)
+    ///     .with_checks(vec![vec![0, 1], vec![1, 2]]);
+    /// 
+    /// let mut iter = parity_check.edges_iter();
     ///
     /// assert_eq!(iter.next(), Some((0, 0)));
     /// assert_eq!(iter.next(), Some((0, 1)));
@@ -337,13 +335,8 @@ impl ParityCheckMatrix {
     /// assert_eq!(iter.next(), Some((1, 2)));
     /// assert_eq!(iter.next(), None);
     /// ```
-    pub fn positions_iter(&self) -> PositionsIter {
-        PositionsIter {
-            active_check: 0,
-            index: 0,
-            check_ranges: &self.check_ranges,
-            bit_indices: &self.bit_indices,
-        }
+    pub fn edges_iter(&self) -> EdgesIter {
+        EdgesIter::from(self)
     }
 
     /// Checks if a given `message` is a codeword of `self`.
@@ -676,34 +669,6 @@ impl Add for &ParityCheckMatrix {
     }
 }
 
-/// An iterator over the position where a parity check matrix is 1.
-/// It is ordered by row and then by col.
-pub struct PositionsIter<'a> {
-    active_check: usize,
-    index: usize,
-    check_ranges: &'a [usize],
-    bit_indices: &'a [usize],
-}
-
-impl<'a> Iterator for PositionsIter<'a> {
-    type Item = (usize, usize);
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.check_ranges
-            .get(self.active_check + 1)
-            .and_then(|&check_end| {
-                if self.index >= check_end {
-                    self.active_check += 1;
-                }
-                let position = self
-                    .bit_indices
-                    .get(self.index)
-                    .map(|&col| (self.active_check, col));
-                self.index += 1;
-                position
-            })
-    }
-}
 
 #[cfg(test)]
 mod test {
@@ -771,7 +736,7 @@ mod test {
     fn positions_iterator() {
         let parity_check = ParityCheckMatrix::with_n_bits(3)
             .with_checks(vec![vec![0, 1], vec![1, 2]]);
-        let mut iter = parity_check.positions_iter();
+        let mut iter = parity_check.edges_iter();
 
         assert_eq!(iter.next(), Some((0, 0)));
         assert_eq!(iter.next(), Some((0, 1)));

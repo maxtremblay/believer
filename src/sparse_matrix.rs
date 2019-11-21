@@ -95,7 +95,7 @@ impl Transposer {
         let mut row_lenght = 0;
 
         parity_check
-            .positions_iter()
+            .edges_iter()
             .enumerate()
             .sorted_by(|(_, (r_0, c_0)), (_, (r_1, c_1))| match c_0.cmp(c_1) {
                 Ordering::Equal => r_0.cmp(r_1),
