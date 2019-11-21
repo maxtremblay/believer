@@ -15,6 +15,9 @@ pub mod check;
 pub use check::{Check, CheckSlice};
 use check::get_bitwise_sum;
 
+pub mod checks_iter;
+pub use checks_iter::ChecksIter;
+
 mod ranker;
 use ranker::Ranker;
 
@@ -299,6 +302,26 @@ impl ParityCheckMatrix {
     /// ```
     /// use believer::ParityCheckMatrix;
     /// 
+    /// let parity_check = ParityCheckMatrix::with_n_bits(3)
+    ///     .with_checks(vec![vec![0, 1], vec![1, 2]]);
+    ///
+    /// let mut iter = parity_check.checks_iter();
+    ///
+    /// assert_eq!(iter.next(), parity_check.get_check(0));
+    /// assert_eq!(iter.next(), parity_check.get_check(1));
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    pub fn checks_iter(&self) -> ChecksIter {
+        ChecksIter::from(self)
+    }
+
+    /// Returns an iterators over all positions in `self` where the value
+    /// is 1. Positions are ordered by check first.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use believer::*;
     /// let parity_check = ParityCheckMatrix::new(
     ///     vec![
     ///         vec![0, 1],
@@ -306,17 +329,20 @@ impl ParityCheckMatrix {
     ///     ],
     ///     3
     /// );
-    /// let mut iter = parity_check.checks_iter();
+    /// let mut iter = parity_check.positions_iter();
     ///
-    /// assert_eq!(iter.next(), parity_check.check(0));
-    /// assert_eq!(iter.next(), parity_check.check(1));
+    /// assert_eq!(iter.next(), Some((0, 0)));
+    /// assert_eq!(iter.next(), Some((0, 1)));
+    /// assert_eq!(iter.next(), Some((1, 1)));
+    /// assert_eq!(iter.next(), Some((1, 2)));
     /// assert_eq!(iter.next(), None);
-    ///
     /// ```
-    pub fn checks_iter(&self) -> ChecksIter {
-        ChecksIter {
-            matrix: &self,
+    pub fn positions_iter(&self) -> PositionsIter {
+        PositionsIter {
             active_check: 0,
+            index: 0,
+            check_ranges: &self.check_ranges,
+            bit_indices: &self.bit_indices,
         }
     }
 
@@ -383,37 +409,6 @@ impl ParityCheckMatrix {
             })
             .collect();
         Self::with_n_bits(self.get_n_bits()).with_checks(checks)
-    }
-
-    /// Returns an iterators over all positions in `self` where the value
-    /// is 1. Positions are ordered by check first.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # use believer::*;
-    /// let parity_check = ParityCheckMatrix::new(
-    ///     vec![
-    ///         vec![0, 1],
-    ///         vec![1, 2],
-    ///     ],
-    ///     3
-    /// );
-    /// let mut iter = parity_check.positions_iter();
-    ///
-    /// assert_eq!(iter.next(), Some((0, 0)));
-    /// assert_eq!(iter.next(), Some((0, 1)));
-    /// assert_eq!(iter.next(), Some((1, 1)));
-    /// assert_eq!(iter.next(), Some((1, 2)));
-    /// assert_eq!(iter.next(), None);
-    /// ```
-    pub fn positions_iter(&self) -> PositionsIter {
-        PositionsIter {
-            active_check: 0,
-            index: 0,
-            check_ranges: &self.check_ranges,
-            bit_indices: &self.bit_indices,
-        }
     }
 
     /// Concatenates a parity check matrix with an other.
@@ -628,21 +623,7 @@ impl std::fmt::Display for ParityCheckMatrix {
 // Public utilitary structs
 // ************************
 
-/// Iterator over the checks of a parity check matrix.
-pub struct ChecksIter<'a> {
-    matrix: &'a ParityCheckMatrix,
-    active_check: usize,
-}
 
-impl<'a> Iterator for ChecksIter<'a> {
-    type Item = CheckView<'a>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let slice = self.matrix.get_check(self.active_check);
-        self.active_check += 1;
-        slice
-    }
-}
 
 impl Add for &ParityCheckMatrix {
     type Output = ParityCheckMatrix;
