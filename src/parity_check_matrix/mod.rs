@@ -407,100 +407,21 @@ impl ParityCheckMatrix {
         Self::with_n_bits(self.get_n_bits()).with_checks(checks)
     }
 
-    /// Concatenates a parity check matrix with an other.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # use believer::*;
-    /// let x = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2], vec![2, 3]], 4);
-    /// let z = ParityCheckMatrix::new(vec![vec![0, 1], vec![1, 2, 3]], 4);
-    ///
-    /// let concat_x_z = x.right_concat(&z);
-    /// let expected_concat_x_z = ParityCheckMatrix::new(
-    ///     vec![
-    ///         vec![0, 1, 4, 5],
-    ///         vec![1, 2, 5, 6, 7],
-    ///         vec![2, 3],
-    ///     ],
-    ///     8
-    /// );
-    /// assert_eq!(concat_x_z, expected_concat_x_z);
-    ///
-    /// let concat_z_x = z.right_concat(&x);
-    /// let expected_concat_z_x = ParityCheckMatrix::new(
-    ///     vec![
-    ///         vec![0, 1, 4, 5],
-    ///         vec![1, 2, 3, 5, 6],
-    ///         vec![6, 7],
-    ///     ],
-    ///     8
-    /// );
-    /// assert_eq!(concat_z_x, expected_concat_z_x);
-    /// ```
-    pub fn right_concat(&self, other: &ParityCheckMatrix) -> ParityCheckMatrix {
-        let new_checks = self
-            .checks_iter()
-            .zip_longest(other.checks_iter())
-            .map(|x| match x {
-                Both(a, b) => {
-                    let mut check: Vec<usize> = a.iter().cloned().collect();
-                    check.extend(b.iter().map(|p| p + self.get_n_bits()));
-                    check
-                }
-                Left(a) => a.iter().cloned().collect(),
-                Right(b) => b.iter().map(|p| p + self.get_n_bits()).collect(),
-            })
-            .collect();
-
-        Self::with_n_bits(self.get_n_bits() + other.get_n_bits()).with_checks(new_checks)
-    }
-
-    pub fn concat_right_with(&self, other: &ParityCheckMatrix) -> ParityCheckMatrix {
+    pub fn concat_horizontally_with(&self, other: &ParityCheckMatrix) -> ParityCheckMatrix {
         Concatener::from(self, other).concat_horizontally()
     }
 
-    pub fn diag_concat(&self, hz: &ParityCheckMatrix) -> ParityCheckMatrix {
-        let new_nb_bits = self.n_bits + hz.n_bits;
-
-        let r1 = &self.check_ranges;
-        let r2 = &hz.check_ranges;
-
-        let mut new_ranges: Vec<usize> = Vec::with_capacity(r1.len() + r2.len());
-        let mut new_indices: Vec<usize> =
-            Vec::with_capacity(self.bit_indices.len() + hz.bit_indices.len());
-
-        for r in r1 {
-            new_ranges.push(*r);
-        }
-
-        for r in r2 {
-            //when adding the new ranges, we just need to shift these by the last range of the first matrix, since they all arrive after
-            new_ranges.push(*r + r1.last().cloned().unwrap_or(0));
-        }
-
-        for i in &self.bit_indices {
-            new_indices.push(*i);
-        }
-        for i in &hz.bit_indices {
-            // similar idea here
-            new_indices.push(*i + self.n_bits);
-        }
-
-        Self {
-            bit_indices: new_indices,
-            check_ranges: new_ranges,
-            n_bits: new_nb_bits,
-        }
+    pub fn concat_diagonally_with(&self, other: &ParityCheckMatrix) -> ParityCheckMatrix {
+        Concatener::from(self, other).concat_diagonally()
     }
 
     pub fn gbc(&self, b: &ParityCheckMatrix) -> ParityCheckMatrix {
         // should check that A and B commute and that Hx*Hz^T = 0
-
-        let hx = self.right_concat(&b);
-        let hz = b.get_transposed_matrix().right_concat(&self.get_transposed_matrix());
-
-        hx.diag_concat(&hz)
+        let hx = self.concat_horizontally_with(&b);
+        let hz = b
+            .get_transposed_matrix()
+            .concat_horizontally_with(&self.get_transposed_matrix());
+        hx.concat_diagonally_with(&hz)
     }
 
     pub fn permu_matrix(l: usize) -> ParityCheckMatrix {
