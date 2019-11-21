@@ -9,6 +9,16 @@ use n_iterations_simulator::NIterationsSimulator;
 mod n_events_simulator;
 use n_events_simulator::NEventsSimulator;
 
+// pub mod belief_propagation;
+// pub use belief_propagation::*;
+
+// pub mod erasure;
+// pub use erasure::*;
+
+// pub mod quantum_erasure;
+// pub use quantum_erasure::{QuantumErasureDecoder, QuantumErasureDecoderBuilder};
+
+
 /// An interface to deal with decoders
 ///
 /// This is the global decoder trait. For more details, see each decoder implementation.
@@ -39,14 +49,16 @@ pub trait Decoder: Send + Sync + Sized {
         self.decode(&self.get_random_error())
     }
 
-    /// Simulates the decoder for `n_iterations`. 
+    /// Simulates decoding random error using `self` for `n_iterations`. 
     fn simulate_n_iterations(&self, n_iterations: u64) -> SimulationResult {
         NIterationsSimulator::from(self)
             .simulate_n_iterations(n_iterations)
             .get_result()
     }
 
-    /// Simulates the decoder for `n_iterations`. 
+    /// Simulates the decoder until `n_events` are found. 
+    /// 
+    /// That is, simulate until `n_events` successes and `n_events` are found.
     fn simulate_until_n_events_are_found(&self, n_events: u64) -> SimulationResult {
         NEventsSimulator::from(self)
             .simulate_until_n_events_are_found(n_events)
@@ -67,12 +79,3 @@ pub trait DecodingResult: Send + Sync {
         !self.is_success()
     }
 }
-
-// pub mod belief_propagation;
-// pub use belief_propagation::*;
-
-// pub mod erasure;
-// pub use erasure::*;
-
-// pub mod quantum_erasure;
-// pub use quantum_erasure::{QuantumErasureDecoder, QuantumErasureDecoderBuilder};
