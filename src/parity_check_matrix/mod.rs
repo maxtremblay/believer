@@ -399,8 +399,7 @@ impl ParityCheckMatrix {
     /// assert_eq!(parity_check.has_codeword(&codeword), true);
     /// ```
     pub fn has_codeword(&self, message: &[GF2]) -> bool {
-        self.checks_iter()
-            .all(|check| check.compute_syndrome(message) == GF2::B0)
+        self.checks_iter().all(|check| check.compute_syndrome(message) == GF2::B0)
     }
 
     /// Returns a truncated parity check matrix with only the column of the given `bits`.
@@ -468,18 +467,6 @@ impl ParityCheckMatrix {
             bit_indices: indices,
             check_ranges: ranges,
             n_bits: l,
-        }
-    }
-
-    pub fn empty_matrix(l: usize) -> ParityCheckMatrix {
-        let n_bits = l;
-        let check_ranges: Vec<usize> = vec![0; l + 1];
-        let bit_indices: Vec<usize> = Vec::with_capacity(0);
-
-        Self {
-            check_ranges,
-            bit_indices,
-            n_bits,
         }
     }
 
