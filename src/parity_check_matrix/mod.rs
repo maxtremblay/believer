@@ -702,20 +702,6 @@ mod test {
     }
 
     #[test]
-    fn checks_iterator() {
-        let parity_check = ParityCheckMatrix::with_n_bits(3)
-            .with_checks(vec![vec![0, 1], vec![1, 2]]);
-        let mut iter = parity_check.checks_iter();
-
-        assert_eq!(iter.next(), parity_check.get_check(0));
-        assert_eq!(iter.next(), parity_check.get_check(1));
-        assert_eq!(iter.next(), None);
-
-        assert_eq!(parity_check.get_check(0).unwrap().as_ref(), &[0, 1]);
-        assert_eq!(parity_check.get_check(1).unwrap().as_ref(), &[1, 2]);
-    }
-
-    #[test]
     fn syndrome() {
         let parity_check = ParityCheckMatrix::with_n_bits(3)
             .with_checks(vec![vec![0, 1], vec![1, 2]]);
@@ -730,29 +716,5 @@ mod test {
             GF2::B0
         );
         assert_eq!(parity_check.get_syndrome_of(&bits), vec![GF2::B1, GF2::B0]);
-    }
-
-    #[test]
-    fn positions_iterator() {
-        let parity_check = ParityCheckMatrix::with_n_bits(3)
-            .with_checks(vec![vec![0, 1], vec![1, 2]]);
-        let mut iter = parity_check.edges_iter();
-
-        assert_eq!(iter.next(), Some((0, 0)));
-        assert_eq!(iter.next(), Some((0, 1)));
-        assert_eq!(iter.next(), Some((1, 1)));
-        assert_eq!(iter.next(), Some((1, 2)));
-        assert_eq!(iter.next(), None);
-    }
-
-    #[test]
-    fn rank() {
-        let parity_check_0 = ParityCheckMatrix::with_n_bits(7)
-            .with_checks(vec![vec![0, 1, 2, 4], vec![0, 1, 3, 5], vec![0, 2, 3, 6]]);
-        assert_eq!(parity_check_0.get_rank(), 3);
-
-        let parity_check_1 = ParityCheckMatrix::with_n_bits(3)
-            .with_checks(vec![vec![0, 1], vec![1, 2], vec![0, 2]]);
-        assert_eq!(parity_check_1.get_rank(), 2);
     }
 }
