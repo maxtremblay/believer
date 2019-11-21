@@ -433,6 +433,33 @@ impl ParityCheckMatrix {
         Self::with_n_bits(self.get_n_bits()).with_checks(checks)
     }
 
+    /// Returns a truncated parity check matrix where the column of the given `bits` are remove.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use believer::*;
+    /// let checks = ParityCheckMatrix::with_n_bits(5).with_checks(vec![
+    ///     vec![0, 1, 2],
+    ///     vec![2, 3, 4],
+    ///     vec![0, 2, 4],
+    ///     vec![1, 3],
+    /// ]);
+    /// 
+    /// let truncated_checks = ParityCheckMatrix::with_n_bits(5).with_checks(vec![
+    ///     vec![1],
+    ///     vec![3, 4],
+    ///     vec![4],
+    ///     vec![1, 3],
+    /// ]);
+    ///
+    /// assert_eq!(checks.without(&[0, 2]), truncated_checks);
+    /// ```
+    pub fn without(&self, bits: &[usize]) -> Self {
+        let to_keep: Vec<usize> = (0..9).filter(|x| !bits.contains(x)).collect();
+        self.keep(&to_keep)
+    }
+
     pub fn gbc(&self, b: &ParityCheckMatrix) -> ParityCheckMatrix {
         // should check that A and B commute and that Hx*Hz^T = 0
         let hx = self.get_horizontal_concat_with(&b);
@@ -490,33 +517,6 @@ impl ParityCheckMatrix {
         ParityCheckMatrix::with_n_bits(l).with_checks(checks)
     }
 
-    /// Returns a truncated parity check matrix where the column of the given `bits` are remove.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # use believer::*;
-    /// let checks = ParityCheckMatrix::with_n_bits(5).with_checks(vec![
-    ///     vec![0, 1, 2],
-    ///     vec![2, 3, 4],
-    ///     vec![0, 2, 4],
-    ///     vec![1, 3],
-    /// ]);
-    /// 
-    /// let truncated_checks = ParityCheckMatrix::with_n_bits(5).with_checks(vec![
-    ///     vec![1],
-    ///     vec![3, 4],
-    ///     vec![4],
-    ///     vec![1, 3],
-    /// ]);
-    ///
-    /// assert_eq!(checks.without(&[0, 2]), truncated_checks);
-    /// ```
-    pub fn without(&self, bits: &[usize]) -> Self {
-        let to_keep: Vec<usize> = (0..9).filter(|x| !bits.contains(x)).collect();
-        self.keep(&to_keep)
-    }
-
     // Returns a reference to `self.check_ranges`.
     pub(crate) fn check_ranges(&self) -> &[usize] {
         &self.check_ranges
@@ -540,62 +540,6 @@ impl std::fmt::Display for ParityCheckMatrix {
         Ok(())
     }
 }
-
-// ************************
-// Public utilitary structs
-// ************************
-
-impl Add for &ParityCheckMatrix {
-    type Output = ParityCheckMatrix;
-
-    fn add(self, b: &ParityCheckMatrix) -> ParityCheckMatrix {
-        // should check same dimensions
-
-        let nb_bits = self.n_bits;
-        let nb_rows = self.check_ranges.len() - 1;
-        let mut new_rows: Vec<Vec<usize>> = Vec::with_capacity(nb_rows);
-
-        for nb_row in 0..nb_rows {
-            let a_row: Vec<usize> = self.get_check(nb_row).unwrap().iter().cloned().collect();
-            let b_row: Vec<usize> = b.get_check(nb_row).unwrap().iter().cloned().collect();
-
-            let mut accum: Vec<usize> = Vec::with_capacity(a_row.len() + b_row.len()); // in the worst case the 1s are in different places and don't cancel out
-
-            let mut i = 0;
-            let mut j = 0;
-
-            while (i < a_row.len()) && (j < b_row.len()) {
-                if a_row[i] == b_row[j] {
-                    // 1+1, we do nothing
-                    i += 1;
-                    j += 1;
-                } else if a_row[i] > b_row[j] {
-                    accum.push(b_row[j]);
-                    j += 1;
-                } else {
-                    accum.push(a_row[i]);
-                    i += 1;
-                }
-            }
-
-            // because a and b can have different length we take care of adding potential leftovers
-            if j >= b_row.len() {
-                for k in i..a_row.len() {
-                    accum.push(a_row[k]);
-                }
-            } else if i >= a_row.len() {
-                for k in j..b_row.len() {
-                    accum.push(b_row[k]);
-                }
-            }
-
-            new_rows.push(accum);
-        }
-
-        ParityCheckMatrix::with_n_bits(nb_bits).with_checks(new_rows)
-    }
-}
-
 
 #[cfg(test)]
 mod test {
