@@ -384,14 +384,9 @@ impl ParityCheckMatrix {
     /// # Example
     ///
     /// ```
-    /// # use believer::*;
-    /// let parity_check = ParityCheckMatrix::new(
-    ///     vec![
-    ///         vec![0, 1],
-    ///         vec![1, 2],
-    ///     ],
-    ///     3
-    /// );
+    /// use believer::ParityCheckMatrix;
+    /// let parity_check = ParityCheckMatrix::with_n_bits(3)
+    ///     .with_checks(vec![vec![0, 1], vec![1, 2]]);
     /// let message = vec![GF2::B0, GF2::B1, GF2::B1];
     /// let codeword = vec![GF2::B0; 3];
     ///
@@ -407,25 +402,20 @@ impl ParityCheckMatrix {
     /// # Example
     ///
     /// ```
-    /// # use believer::*;
-    /// let checks = ParityCheckMatrix::new(
-    ///     vec![
-    ///         vec![0, 1, 2],
-    ///         vec![2, 3, 4],
-    ///         vec![0, 2, 4],
-    ///         vec![1, 3],
-    ///     ],
-    ///     5  
-    /// );
-    /// let truncated_checks = ParityCheckMatrix::new(
-    ///     vec![
-    ///         vec![0, 1],
-    ///         vec![4],
-    ///         vec![0, 4],
-    ///         vec![1],
-    ///     ],
-    ///     5  
-    /// );
+    /// use believer::ParityCheckMatrix;
+    /// let checks = ParityCheckMatrix::with_n_bits(5).with_checks(vec![
+    ///     vec![0, 1, 2],
+    ///     vec![2, 3, 4],
+    ///     vec![0, 2, 4],
+    ///     vec![1, 3],
+    /// ]);
+    /// 
+    /// let truncated_checks = ParityCheckMatrix::with_n_bits(5).with_checks(vec![
+    ///     vec![0, 1],
+    ///     vec![4],
+    ///     vec![0, 4],
+    ///     vec![1],
+    /// ]);
     ///
     /// assert_eq!(checks.keep(&[0, 1, 4]), truncated_checks);
     /// ```
@@ -506,24 +496,19 @@ impl ParityCheckMatrix {
     ///
     /// ```
     /// # use believer::*;
-    /// let checks = ParityCheckMatrix::new(
-    ///     vec![
-    ///         vec![0, 1, 2],
-    ///         vec![2, 3, 4],
-    ///         vec![0, 2, 4],
-    ///         vec![1, 3],
-    ///     ],
-    ///     5  
-    /// );
-    /// let truncated_checks = ParityCheckMatrix::new(
-    ///     vec![
-    ///         vec![1],
-    ///         vec![3, 4],
-    ///         vec![4],
-    ///         vec![1, 3],
-    ///     ],
-    ///     5  
-    /// );
+    /// let checks = ParityCheckMatrix::with_n_bits(5).with_checks(vec![
+    ///     vec![0, 1, 2],
+    ///     vec![2, 3, 4],
+    ///     vec![0, 2, 4],
+    ///     vec![1, 3],
+    /// ]);
+    /// 
+    /// let truncated_checks = ParityCheckMatrix::with_n_bits(5).with_checks(vec![
+    ///     vec![1],
+    ///     vec![3, 4],
+    ///     vec![4],
+    ///     vec![1, 3],
+    /// ]);
     ///
     /// assert_eq!(checks.without(&[0, 2]), truncated_checks);
     /// ```
@@ -559,8 +544,6 @@ impl std::fmt::Display for ParityCheckMatrix {
 // ************************
 // Public utilitary structs
 // ************************
-
-
 
 impl Add for &ParityCheckMatrix {
     type Output = ParityCheckMatrix;
