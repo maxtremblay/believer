@@ -456,6 +456,10 @@ impl ParityCheckMatrix {
         Self::with_n_bits(self.get_n_bits() + other.get_n_bits()).with_checks(new_checks)
     }
 
+    pub fn concat_right_with(&self, other: &ParityCheckMatrix) -> ParityCheckMatrix {
+        Concatener::from(self, other).concat_horizontally()
+    }
+
     pub fn diag_concat(&self, hz: &ParityCheckMatrix) -> ParityCheckMatrix {
         let new_nb_bits = self.n_bits + hz.n_bits;
 
