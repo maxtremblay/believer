@@ -90,8 +90,6 @@ impl DecodingResult for ErasureResult {
 #[cfg(test)]
 mod test {
     use super::*;
-    use rand::SeedableRng;
-    use rand_chacha::ChaCha8Rng;
 
     #[test]
     fn repetition_code() {
