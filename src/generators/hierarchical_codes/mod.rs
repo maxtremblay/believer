@@ -131,7 +131,7 @@ impl Generator {
 }
 
 impl CodeGenerator for Generator {
-    fn generate_with_rng<R: Rng>(&self, rng: R) -> ParityCheckMatrix {
+    fn generate_with_rng<R: Rng>(&self, rng: &mut R) -> ParityCheckMatrix {
         if self.will_generate_an_empty_code() {
             ParityCheckMatrix::new()
         } else {
@@ -166,7 +166,7 @@ mod test {
         generator
             .set_initial_block_length(8)
             .set_n_checks_per_block(6);
-        let code = generator.generate_with_rng(ChaCha8Rng::seed_from_u64(10));
+        let code = generator.generate_with_rng(&mut ChaCha8Rng::seed_from_u64(10));
         println!("{}", code);
     }
 }

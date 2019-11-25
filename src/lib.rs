@@ -15,8 +15,8 @@ pub use gf2::*;
 // pub mod gf4_stabilizers;
 // pub use gf4_stabilizers::*;
 
-// pub mod generators;
-// pub use generators::*;
+pub mod generators;
+pub use generators::*;
 
 pub mod parity_check_matrix;
 pub use parity_check_matrix::*;

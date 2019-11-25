@@ -1,7 +1,7 @@
 use super::DecodingResult;
 
 /// An interface for simulation result. 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct SimulationResult {
     n_successes: u64,
     n_failures: u64,
@@ -21,7 +21,7 @@ impl SimulationResult {
     }
 
     // Creates the worse `SimulationResult`. That is, a simulation with failure rate 1.
-    pub(super) fn worse_result() -> Self {
+    pub(crate) fn worse_result() -> Self {
         Self { n_successes: 0, n_failures: 1 }
     }
 
@@ -39,6 +39,11 @@ impl SimulationResult {
 
     pub(super) fn has_not_at_least_one_success_and_one_failure(&self) -> bool {
         self.n_successes == 0 || self.n_failures == 0
+    }
+
+    /// Checks if `self` has better performance than `other`.
+    pub fn is_better_than(&self, other: &Self) -> bool {
+        self.get_failure_rate() < other.get_failure_rate()
     }
 
     // ***** Getters *****
