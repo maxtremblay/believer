@@ -2,8 +2,7 @@
 
 use super::{Decoder, DecodingResult};
 use crate::ParityCheckMatrix;
-use rand::{Rng, thread_rng};
-use rand::rngs::ThreadRng;
+use rand::Rng;
 
 /// Decoder for classical erasure channel.
 ///
@@ -36,13 +35,7 @@ impl ErasureDecoder {
         }
     }
 
-    /// Set the code of self to `code` consuming it.
-    pub fn with_code(mut self, code: ParityCheckMatrix) -> Self {
-        self.code = code;
-        self
-    }
-
-    fn next_bit_is_erased_with_rng<R: Rng>(&self, rng: &mut R) -> bool {
+    fn next_bit_is_erased<R: Rng>(&self, rng: &mut R) -> bool {
         rng.gen::<f64>() < self.erasure_prob
     }
 }
@@ -52,8 +45,8 @@ impl Decoder for ErasureDecoder {
     type Result = ErasureResult;
     type Code = ParityCheckMatrix;
 
-    fn set_code(&mut self, code: Self::Code) {
-        self.code = code;
+    fn for_code(&self, code: Self::Code) -> Self {
+        Self { code, erasure_prob: self.erasure_prob }
     }
 
     fn take_code(&mut self) -> Self::Code {
@@ -89,7 +82,7 @@ pub enum ErasureResult {
 }
 
 impl DecodingResult for ErasureResult {
-    fn succeed(&self) -> bool {
+    fn is_success(&self) -> bool {
         self == &Self::Success
     }
 }
@@ -97,11 +90,13 @@ impl DecodingResult for ErasureResult {
 #[cfg(test)]
 mod test {
     use super::*;
+    use rand::SeedableRng;
+    use rand_chacha::ChaCha8Rng;
 
     #[test]
     fn repetition_code() {
         let code = ParityCheckMatrix::with_n_bits(3).with_checks(vec![vec![0, 1], vec![1, 2]]);
-        let decoder = ErasureDecoder::with_prob(0.2).with_code(code);
+        let decoder = ErasureDecoder::with_prob(0.2).for_code(code);
 
         assert_eq!(decoder.decode(&vec![]), ErasureResult::Success);
         for i in 0..=2 {
@@ -120,7 +115,7 @@ mod test {
             vec![0, 1, 3, 5],
             vec![0, 2, 3, 6],
         ]);
-        let decoder = ErasureDecoder::with_prob(0.25).with_code(code);
+        let decoder = ErasureDecoder::with_prob(0.25).for_code(code);
 
         assert_eq!(decoder.decode(&vec![]), ErasureResult::Success);
         for i in 0..=6 {
