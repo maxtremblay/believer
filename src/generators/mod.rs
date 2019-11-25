@@ -1,6 +1,4 @@
-use crate::{Decoder, ErasureDecoder};
 use crate::ParityCheckMatrix;
-use crate::SimulationResult;
 use rand::{thread_rng, Rng};
 
 pub mod best_code_finder;
