@@ -1,5 +1,8 @@
 //! A belief propapagation decoder for classical and quantum sparse error correcting codes.
 
+pub(crate) mod random_number_generators;
+pub(crate) use random_number_generators::*;
+
 pub mod channel;
 pub use channel::*;
 
