@@ -2,7 +2,7 @@ use crate::ParityCheckMatrix;
 use rand::{thread_rng, Rng};
 
 pub mod best_code_finder;
-pub use best_code_finder::BestCodeFinderFromErasure;
+pub use best_code_finder::BestCodeFinderUsingErasure;
 
 pub mod random_checks;
 
