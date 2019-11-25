@@ -528,6 +528,7 @@ impl ParityCheckMatrix {
     }
 
     // Returns a reference to `self.bit_indices
+    #[allow(dead_code)]
     pub(crate) fn bit_indices(&self) -> &[usize] {
         &self.bit_indices
     }
