@@ -107,13 +107,14 @@ impl<'a, G: CodeGenerator> BestCodeFinderUsingErasure<'a, G> {
     /// ```
     /// use believer::BestCodeFinderUsingErasure;
     /// use believer::RegularLDPCCodeGenerator;
+    /// use rand::thread_rng;
     /// 
     /// let generator = RegularLDPCCodeGenerator::new(3, 4, 2, 4);
     /// let code_finder = BestCodeFinderUsingErasure::from_code_generator(&generator)
     ///     .with_erasure_prob(0.5)
     ///     .among_n_codes(10);
     /// let (code, result) = code_finder
-    ///     .find_best_code_simulating_n_iterations_with_rng(1000, &mut thread_rng);
+    ///     .find_best_code_simulating_n_iterations_with_rng(1000, &mut thread_rng());
     /// ```
     pub fn find_best_code_simulating_n_iterations_with_rng<R: Rng>(
         &self,
@@ -165,13 +166,14 @@ impl<'a, G: CodeGenerator> BestCodeFinderUsingErasure<'a, G> {
     /// ```
     /// use believer::BestCodeFinderUsingErasure;
     /// use believer::RegularLDPCCodeGenerator;
+    /// use rand::thread_rng;
     /// 
     /// let generator = RegularLDPCCodeGenerator::new(3, 4, 2, 4);
     /// let code_finder = BestCodeFinderUsingErasure::from_code_generator(&generator)
     ///     .with_erasure_prob(0.5)
     ///     .among_n_codes(10);
     /// let (code, result) = code_finder
-    ///     .find_best_code_simulating_n_events_with_rng(25, &mut thread_rng);
+    ///     .find_best_code_simulating_n_events_with_rng(25, &mut thread_rng());
     /// ```
     pub fn find_best_code_simulating_n_events_with_rng<R: Rng>(
         &self,
@@ -203,7 +205,7 @@ impl<'a, G: CodeGenerator> BestCodeFinderUsingErasure<'a, G> {
     ///     .with_erasure_prob(0.5)
     ///     .among_n_codes(10);
     /// let (code, result) = code_finder
-    ///     .find_best_code_simulating_n_events(25, &mut thread_rng);
+    ///     .find_best_code_simulating_n_events(25);
     /// ```
     pub fn find_best_code_simulating_n_events(&self, n_events: usize) -> CodeAndResult {
         self.find_best_code_simulating_n_events_with_rng(n_events, &mut thread_rng())

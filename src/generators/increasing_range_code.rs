@@ -15,7 +15,7 @@ use rand::{thread_rng, Rng};
 /// # Example
 ///
 /// ```
-/// # use believer::*;
+/// use believer::{IRCodeGenBuilder, CodeGenerator};
 /// let n_bits = 4;
 /// let n_checks = 3;
 /// let generator = IRCodeGenBuilder::new(n_bits, n_checks)
@@ -23,10 +23,10 @@ use rand::{thread_rng, Rng};
 ///     .with_max_check_degree(4)
 ///     .build();
 ///
-/// let code = generator.generate(&mut rand::thread_rng());
+/// let code = generator.generate();
 ///
-/// assert_eq!(code.n_bits(), 4);
-/// assert_eq!(code.n_checks(), 3);
+/// assert_eq!(code.get_n_bits(), 4);
+/// assert_eq!(code.get_n_checks(), 3);
 ///
 /// // Bit degrees are at most 3.
 /// code.get_bit_degrees().iter().for_each(|&d| assert_eq!(d <= 3, true));

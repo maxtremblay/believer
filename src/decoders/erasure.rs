@@ -11,8 +11,8 @@ use rand::Rng;
 /// ```
 /// # use believer::*;
 /// let code = ParityCheckMatrix::with_n_bits(3).with_checks(vec![vec![0, 1], vec![1, 2]]);
-/// let decoder = ErasureDecoder::with_prob(0.25).with_code(code);
-/// decoder.decode(&decoder.random_error());
+/// let decoder = ErasureDecoder::with_prob(0.25).for_code(code);
+/// decoder.decode(&decoder.get_random_error());
 /// ```
 pub struct ErasureDecoder {
     code: ParityCheckMatrix,

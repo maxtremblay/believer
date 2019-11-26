@@ -205,7 +205,7 @@ impl ParityCheckMatrix {
     ///
     /// let checks = vec![vec![0, 1, 2, 5], vec![1, 3, 4], vec![2, 4, 5], vec![0, 5]];
     /// let matrix = ParityCheckMatrix::with_n_bits(7).with_checks(checks);
-    /// assert_eq!(checks.get_check_degrees(), vec![4, 3, 3, 2]);
+    /// assert_eq!(matrix.get_check_degrees(), vec![4, 3, 3, 2]);
     /// ```
     pub fn get_check_degrees(&self) -> Vec<usize> {
         self.checks_iter().map(|check| check.get_n_bits()).collect()
@@ -288,7 +288,7 @@ impl ParityCheckMatrix {
     /// let transposed_matrix = matrix.get_transposed_matrix();
     ///
     /// let expected_checks = vec![vec![0, 2], vec![0, 1], vec![0, 2], vec![1, 2]];
-    /// let expected_matrix = ParityCheckMatrix::with_n_bits(3).with_checks(checks);
+    /// let expected_matrix = ParityCheckMatrix::with_n_bits(3).with_checks(expected_checks);
     ///
     /// assert_eq!(transposed_matrix, expected_matrix);
     /// ```
@@ -388,7 +388,7 @@ impl ParityCheckMatrix {
     /// # Example
     ///
     /// ```
-    /// use believer::ParityCheckMatrix;
+    /// use believer::{GF2, ParityCheckMatrix};
     /// let parity_check = ParityCheckMatrix::with_n_bits(3)
     ///     .with_checks(vec![vec![0, 1], vec![1, 2]]);
     /// let message = vec![GF2::B0, GF2::B1, GF2::B1];

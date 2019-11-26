@@ -3,7 +3,7 @@
 //! # Example
 //!
 //! ```
-//! # use believer::*;
+//! # use believer::ParityCheckMatrix;
 //! let all_checks = vec![
 //!     vec![0, 1],
 //!     vec![0, 3],
@@ -39,20 +39,18 @@ impl<'a> CheckView<'a> {
     /// # Example
     ///
     /// ```
-    /// # use believer::*;
-    /// let parity_check = ParityCheckMatrix::new(
-    ///     vec![
+    /// # use believer::{GF2, ParityCheckMatrix};
+    /// let parity_check = ParityCheckMatrix::with_n_bits(7)
+    ///     .with_checks(vec![
     ///         vec![0, 1, 2, 4],
     ///         vec![0, 1, 3, 5],
     ///         vec![0, 2, 3, 6],
-    ///     ],
-    ///     7
-    /// );
+    ///     ]);
     /// let other = vec![GF2::B0, GF2::B1, GF2::B0, GF2::B1, GF2::B0, GF2::B1, GF2::B0];
     ///
-    /// assert_eq!(parity_check.check(0).unwrap().compute_syndrome(&other), GF2::B1);
-    /// assert_eq!(parity_check.check(1).unwrap().compute_syndrome(&other), GF2::B1);
-    /// assert_eq!(parity_check.check(2).unwrap().compute_syndrome(&other), GF2::B1);
+    /// assert_eq!(parity_check.get_check(0).unwrap().compute_syndrome(&other), GF2::B1);
+    /// assert_eq!(parity_check.get_check(1).unwrap().compute_syndrome(&other), GF2::B1);
+    /// assert_eq!(parity_check.get_check(2).unwrap().compute_syndrome(&other), GF2::B1);
     /// ```
     pub fn compute_syndrome(&self, message: &[GF2]) -> GF2 {
         self.iter().fold(GF2::B0, |acc, &bit| {
@@ -80,21 +78,20 @@ impl<'a> CheckView<'a> {
     /// # Example
     ///
     /// ```
-    /// # use believer::*;
-    /// let parity_check = ParityCheckMatrix::new(
+    /// # use believer::ParityCheckMatrix;
+    /// let parity_check = ParityCheckMatrix::with_n_bits(6).with_checks(
     ///     vec![
     ///         vec![0, 1],
     ///         vec![1, 2, 5],
     ///         vec![3],
     ///         vec![0, 4],
-    ///     ],
-    ///     6
+    ///     ]
     /// );
     ///
-    /// assert_eq!(parity_check.check(0).unwrap().spread(), 2);
-    /// assert_eq!(parity_check.check(1).unwrap().spread(), 5);
-    /// assert_eq!(parity_check.check(2).unwrap().spread(), 1);
-    /// assert_eq!(parity_check.check(3).unwrap().spread(), 5);
+    /// assert_eq!(parity_check.get_check(0).unwrap().spread(), 2);
+    /// assert_eq!(parity_check.get_check(1).unwrap().spread(), 5);
+    /// assert_eq!(parity_check.get_check(2).unwrap().spread(), 1);
+    /// assert_eq!(parity_check.get_check(3).unwrap().spread(), 5);
     /// ```
     pub fn spread(&self) -> usize {
         self.max() - self.min() + 1 // Well define (>= 0), because max >= min.
@@ -106,20 +103,19 @@ impl<'a> CheckView<'a> {
     ///
     /// ```
     /// # use believer::*;
-    /// let parity_check = ParityCheckMatrix::new(
+    /// let parity_check = ParityCheckMatrix::with_n_bits(6).with_checks(
     ///     vec![
     ///         vec![0, 1],
     ///         vec![1, 2, 5],
     ///         vec![3],
     ///         vec![0, 4],
-    ///     ],
-    ///     6
+    ///     ]
     /// );
     ///
-    /// assert_eq!(parity_check.check(0).unwrap().max(), 1);
-    /// assert_eq!(parity_check.check(1).unwrap().max(), 5);
-    /// assert_eq!(parity_check.check(2).unwrap().max(), 3);
-    /// assert_eq!(parity_check.check(3).unwrap().max(), 4);
+    /// assert_eq!(parity_check.get_check(0).unwrap().max(), 1);
+    /// assert_eq!(parity_check.get_check(1).unwrap().max(), 5);
+    /// assert_eq!(parity_check.get_check(2).unwrap().max(), 3);
+    /// assert_eq!(parity_check.get_check(3).unwrap().max(), 4);
     /// ```
     pub fn max(&self) -> usize {
         *self.bits.last().unwrap() // Check is always sorted and non empty.
@@ -131,20 +127,19 @@ impl<'a> CheckView<'a> {
     ///
     /// ```
     /// # use believer::*;
-    /// let parity_check = ParityCheckMatrix::new(
+    /// let parity_check = ParityCheckMatrix::with_n_bits(6).with_checks(
     ///     vec![
     ///         vec![0, 1],
     ///         vec![1, 2, 5],
     ///         vec![3],
     ///         vec![0, 4],
-    ///     ],
-    ///     6
+    ///     ]
     /// );
     ///
-    /// assert_eq!(parity_check.check(0).unwrap().min(), 0);
-    /// assert_eq!(parity_check.check(1).unwrap().min(), 1);
-    /// assert_eq!(parity_check.check(2).unwrap().min(), 3);
-    /// assert_eq!(parity_check.check(3).unwrap().min(), 0);
+    /// assert_eq!(parity_check.get_check(0).unwrap().min(), 0);
+    /// assert_eq!(parity_check.get_check(1).unwrap().min(), 1);
+    /// assert_eq!(parity_check.get_check(2).unwrap().min(), 3);
+    /// assert_eq!(parity_check.get_check(3).unwrap().min(), 0);
     /// ```
     pub fn min(&self) -> usize {
         *self.bits.first().unwrap() // Check is always sorted and non empty.
