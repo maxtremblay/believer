@@ -14,6 +14,7 @@ use rand::Rng;
 /// let decoder = ErasureDecoder::with_prob(0.25).for_code(code);
 /// decoder.decode(&decoder.get_random_error());
 /// ```
+#[derive(Debug)]
 pub struct ErasureDecoder {
     code: ParityCheckMatrix,
     erasure_prob: f64,
@@ -45,8 +46,9 @@ impl Decoder for ErasureDecoder {
     type Result = ErasureResult;
     type Code = ParityCheckMatrix;
 
-    fn for_code(&self, code: Self::Code) -> Self {
-        Self { code, erasure_prob: self.erasure_prob }
+    fn for_code(mut self, code: Self::Code) -> Self {
+        self.code = code;
+        self
     }
 
     fn take_code(&mut self) -> Self::Code {

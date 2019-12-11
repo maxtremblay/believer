@@ -35,7 +35,7 @@ pub trait Decoder: Send + Sync + Sized {
 
     /// Creates a new decoder similar to `self` that use `code` without changing the other 
     /// parameter. This consume `code`.
-    fn for_code(&self, code: Self::Code) -> Self;
+    fn for_code(self, code: Self::Code) -> Self;
 
     /// Takes the `code` out of the decoder leaving an empty set of code instead.
     fn take_code(&mut self) -> Self::Code;
