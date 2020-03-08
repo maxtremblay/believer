@@ -27,8 +27,8 @@ impl GF4Stabilizers {
             z_checks.push(z_check);
         });
         Self {
-            x_checks: ParityCheckMatrix::new(x_checks, n_qubits),
-            z_checks: ParityCheckMatrix::new(z_checks, n_qubits),
+            x_checks: ParityCheckMatrix::with_n_bits(n_qubits).with_checks(x_checks),
+            z_checks: ParityCheckMatrix::with_n_bits(n_qubits).with_checks(z_checks)
         }
     }
 
@@ -51,8 +51,8 @@ impl GF4Stabilizers {
             z_checks.push(z_check);
         });
         Self {
-            x_checks: ParityCheckMatrix::new(x_checks, n_qubits),
-            z_checks: ParityCheckMatrix::new(z_checks, n_qubits),
+            x_checks: ParityCheckMatrix::with_n_bits(n_qubits).with_checks(x_checks),
+            z_checks: ParityCheckMatrix::with_n_bits(n_qubits).with_checks(z_checks)
         }
     }
 
@@ -82,7 +82,7 @@ impl GF4Stabilizers {
     }
 
     pub fn merge(&self) -> ParityCheckMatrix {
-        self.x_checks.right_concat(&self.z_checks)
+        self.x_checks.get_horizontal_concat_with(&self.z_checks)
     }
 
     pub fn n_qubits(&self) -> usize {

@@ -17,8 +17,8 @@ use n_events_simulator::NEventsSimulator;
 pub mod erasure;
 pub use erasure::*;
 
-// pub mod quantum_erasure;
-// pub use quantum_erasure::{QuantumErasureDecoder, QuantumErasureDecoderBuilder};
+pub mod quantum_erasure;
+pub use quantum_erasure::{QuantumErasureDecoder};
 
 /// An interface to deal with decoders
 ///
