@@ -113,9 +113,7 @@ impl ParityCheckMatrix {
 
     fn fill_with(&mut self, checks: Vec<Check>) {
         checks.into_iter().for_each(|check| {
-            if check.len() > 0 {
-                self.add_check(check)
-            }
+            self.add_check(check)
         });
     }
 
