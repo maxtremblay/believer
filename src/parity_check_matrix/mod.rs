@@ -82,14 +82,14 @@ impl ParityCheckMatrix {
     /// let mut matrix = ParityCheckMatrix::with_n_bits(3).with_checks(checks);
     /// ```
     pub fn with_checks(mut self, checks: Vec<Check>) -> Self {
-        if !checks.is_empty() {
+       if !checks.is_empty() {
             if self.some_checks_are_out_of_bounds(&checks) {
                 panic!("some checks are out of bounds");
             }
             self.init_bit_indices(&checks);
             self.init_check_ranges(&checks);
             self.fill_with(checks);
-        }
+       }
         self
     }
 
@@ -113,7 +113,9 @@ impl ParityCheckMatrix {
 
     fn fill_with(&mut self, checks: Vec<Check>) {
         checks.into_iter().for_each(|check| {
-            self.add_check(check)
+           // if check.len() > 0 {
+                self.add_check(check)
+          //  }
         });
     }
 
@@ -270,7 +272,145 @@ impl ParityCheckMatrix {
     /// assert_eq!(parity_check.get_rank(), 2);
     /// ```
     pub fn get_rank(&self) -> usize {
-        Ranker::from_parity_check_matrix(self).get_rank()
+        self.rank()
+    }
+
+    pub fn rank(&self) -> usize{
+        
+        let n_cols = self.n_bits;
+        let n_rows = self.get_n_checks();
+        let mut rank = 0;
+
+        let mut tmp_matrix: Vec<Vec<usize>> = Vec::with_capacity(n_rows); 
+
+        for i in 0..n_rows {
+
+            tmp_matrix.push(self.bit_indices[self.check_ranges[i]..self.check_ranges[i+1]].to_vec()); // we store the original matrix as a vector of sparse rows
+
+        }
+       
+        for j in 0..n_cols {
+
+            for i in 0..n_rows { 
+
+                if tmp_matrix[i].len() > 0 && tmp_matrix[i][0] == j    { // select a NEW pivot
+
+                    for k in 0..i {
+
+                        if  tmp_matrix[k].len() > 0 && tmp_matrix[k][0] == j  {
+
+                            tmp_matrix[k] = add_checks(&tmp_matrix[i],&tmp_matrix[k]);
+
+                        }
+
+                    }
+                    for k in (i+1)..n_rows {
+
+                        if tmp_matrix[k].len() > 0 && tmp_matrix[k][0] == j   {
+
+                            tmp_matrix[k] = add_checks(&tmp_matrix[i],&tmp_matrix[k]);
+
+                        }
+
+
+                    }
+
+                    unsafe {tmp_matrix[i].set_len(0)};
+                    rank += 1;
+
+                    break
+                }
+            }
+
+            
+        }
+       
+        rank
+
+    }
+
+    pub fn tmp_rank_pcm(&self) -> Vec<Vec<usize>>{
+        let n_rows = self.get_n_checks();
+        let mut tmp_matrix: Vec<Vec<usize>> = Vec::with_capacity(n_rows); 
+        for _ in 0..n_rows {
+
+            let new_row = Vec::with_capacity(n_rows);
+
+            tmp_matrix.push(new_row); 
+
+        }
+
+        tmp_matrix
+    }
+
+    pub fn init_rank_tmp(&self, tmp_matrix: &mut Vec<Vec<usize>>) {
+
+        for i in 0..tmp_matrix.len() {
+            let new_row = &self.bit_indices[self.check_ranges[i]..self.check_ranges[i+1]];
+
+            tmp_matrix[i].clear();
+            
+            for j in 0..new_row.len() {
+                tmp_matrix[i].push(new_row[j]);
+            }
+
+
+        }
+
+    }
+
+
+    pub fn rank_mut(&self, tmp_matrix: &mut Vec<Vec<usize>>, tmp_sum: &mut Vec<usize>) -> usize{
+        
+        let n_cols = self.n_bits;
+        let n_rows = self.get_n_checks();
+        let mut rank = 0;
+
+        self.init_rank_tmp(tmp_matrix);
+       
+        for j in 0..n_cols {
+
+            for i in 0..n_rows { 
+
+                if tmp_matrix[i].len() > 0 && tmp_matrix[i][0] == j    { // select a NEW pivot
+
+                    for k in 0..i {
+
+                        if  tmp_matrix[k].len() > 0 && tmp_matrix[k][0] == j  {
+                            
+                            add_checks_mut(&tmp_matrix[i], &tmp_matrix[k],tmp_sum);
+                            transfer_to(tmp_sum, &mut tmp_matrix[k]);
+                            tmp_sum.clear();
+                           // println!("{:?}",tmp_matrix[k]);
+
+                        }
+
+                    }
+                    for k in (i+1)..n_rows {
+
+                        if tmp_matrix[k].len() > 0 && tmp_matrix[k][0] == j   {
+
+                            add_checks_mut(&tmp_matrix[i], &tmp_matrix[k],tmp_sum);
+                            transfer_to(tmp_sum, &mut tmp_matrix[k]);
+                            tmp_sum.clear();
+                            //println!("{:?}",tmp_matrix[k]);
+                        }
+
+
+                    }
+
+                    unsafe {tmp_matrix[i].set_len(0)};
+                    rank += 1;
+
+                    break
+                }
+            }
+
+            
+        }
+       
+        rank
+
     }
 
     /// Gets the transposed version of `self` by swapping the bits with the checks.
@@ -436,6 +576,84 @@ impl ParityCheckMatrix {
         Self::with_n_bits(self.get_n_bits()).with_checks(checks)
     }
 
+    pub fn keep_merged(&self, bits: &[usize]) -> ParityCheckMatrix{
+        
+        let mut tot_nb_checks = 0;
+        let mut target = ParityCheckMatrix::with_n_bits(self.get_n_bits());
+        target.check_ranges.push(0);
+
+        for check in self.checks_iter() {
+
+            let mut nb_check = 0;
+
+            check
+                .iter()
+                .filter(|&bit| {
+
+                    //println!("binary search, bits:{:?}, bit:{}, res:{}",bits, bit + (self.get_n_bits()/2), binary_search(bits, &(bit + (self.get_n_bits()/2))));
+
+                    let mut found = false;
+                    //println!("binary search, bits:{:?}, bit:{}, res:{}",bits, bit + (self.get_n_bits()/2), binary_search(bits, &(bit + (self.get_n_bits()/2))));
+                    if bit < &(self.get_n_bits()/2) {
+                        found = binary_search(bits, bit);
+                    } else {
+                        found = binary_search(bits, &(bit - (self.get_n_bits()/2)));// do we found the check in either the Z part or the X part. Both have width n_bits/2
+                    }
+                    
+                    if found {
+                        target.bit_indices.push(*bit);
+                        nb_check += 1;
+                    }
+                    found
+                    }).count();
+
+            tot_nb_checks += nb_check;
+            target.check_ranges.push(tot_nb_checks);
+
+        }
+
+        target
+
+    }
+
+    pub fn without_merged(&self, bits: &[usize]) -> ParityCheckMatrix{
+        
+        let mut tot_nb_checks = 0;
+        let mut target = ParityCheckMatrix::with_n_bits(self.get_n_bits());
+        target.check_ranges.push(0);
+
+        for check in self.checks_iter() {
+
+            let mut nb_check = 0;
+
+            check
+                .iter()
+                .filter(|&bit| {
+
+                    let mut found = false;
+                    //println!("binary search, bits:{:?}, bit:{}, res:{}",bits, bit + (self.get_n_bits()/2), binary_search(bits, &(bit + (self.get_n_bits()/2))));
+                    if bit < &(self.get_n_bits()/2) {
+                        found = !binary_search(bits, bit);
+                    } else {
+                        found = !binary_search(bits, &(bit - (self.get_n_bits()/2)));// do we found the check in either the Z part or the X part. Both have width n_bits/2
+                    }
+
+                    if found {
+                        target.bit_indices.push(*bit);
+                        nb_check += 1;
+                    }
+                    found
+                    }).count();
+
+            tot_nb_checks += nb_check;
+            target.check_ranges.push(tot_nb_checks);
+
+        }
+
+        target
+
+    }
+
     /// Returns a truncated parity check matrix where the column of the given `bits` are remove.
     ///
     /// # Example
@@ -470,6 +688,51 @@ impl ParityCheckMatrix {
             .get_transposed_matrix()
             .get_horizontal_concat_with(&self.get_transposed_matrix());
         hx.get_diagonal_concat_with(&hz)
+    }
+
+    pub fn gbc_from_poly(a: &[usize], b: &[usize], l: usize) -> ParityCheckMatrix { //l is n_bits_a = n_bits_b, and the number of physical qubits is 2*l
+        let w_a = a.len();
+        let w_b = b.len();
+        let w = w_a + w_b;
+        let check_ranges:Vec<usize> = (0..2*l*w+1).step_by(w).collect();
+        let mut bit_indices: Vec<usize> = Vec::with_capacity(2*l*w);
+
+        for i in 0..l {
+            for j in a {
+
+                bit_indices.push((j+i)%l);
+
+            }
+            (&mut bit_indices[i*w..i*w + w_a]).sort_unstable();
+            for j in b {
+
+                bit_indices.push((j+i)%l + l);
+
+            }
+            (&mut bit_indices[i*w + w_a..(i+1)*w]).sort_unstable();
+        }
+        for i in l..2*l {
+            for j in b {
+
+                bit_indices.push((l-j+i)%l + 2*l);
+
+            }
+            (&mut bit_indices[i*w..i*w + w_b]).sort_unstable();
+            for j in a {
+
+                bit_indices.push((l-j+i)%l + 3*l);
+
+            }
+            (&mut bit_indices[i*w + w_b..(i+1)*w]).sort_unstable();
+            
+        }
+
+        Self {
+            n_bits: 4*l,
+            check_ranges,
+            bit_indices
+        } 
+
     }
 
     pub fn permu_matrix(l: usize) -> ParityCheckMatrix {
@@ -530,6 +793,109 @@ impl ParityCheckMatrix {
     pub(crate) fn bit_indices(&self) -> &[usize] {
         &self.bit_indices
     }
+}
+
+fn transfer_to(v1: &[usize], v2: &mut Vec<usize>){
+
+    unsafe{ v2.set_len(v1.len())}
+    for i in 0..v1.len() {
+        v2[i] = v1[i];
+    }
+}
+
+pub fn add_checks_mut(check_0: &[usize], check_1: &[usize], sum: &mut Vec<usize>){
+    //let mut sum = Vec::with_capacity(check_0.len() + check_1.len());
+    sum.clear();
+    let mut iter_0 = check_0.iter().peekable();
+    let mut iter_1 = check_1.iter().peekable();
+    loop {
+        match (iter_0.peek(), iter_1.peek()) {
+            (Some(&&v), None) => {
+                sum.push(v);
+                iter_0.next();
+            }
+            (None, Some(&&v)) => {
+                sum.push(v);
+                iter_1.next();
+            }
+            (Some(&&v_0), Some(&&v_1)) => {
+                if v_0 < v_1 {
+                    sum.push(v_0);
+                    iter_0.next();
+                } else if v_0 > v_1 {
+                    sum.push(v_1);
+                    iter_1.next();
+                } else {
+                    iter_0.next();
+                    iter_1.next();
+                }
+            }
+            (None, None) => break,
+        }
+    }
+}
+
+pub fn binary_search(data: &[usize], target: &usize) -> bool {
+
+    // println!("data:{:?}",data);
+    // println!("target:{:?}",target);
+    if data.len() > 0 {
+
+        let mut high = data.len()-1;
+        let mut low = 0;
+        
+        if target < &data[0] || target > &data[high] {
+            return false
+        }
+    
+        while low <= high {
+            let mid = (low + high) / 2;
+
+            if data[mid] < *target {
+                low = mid + 1
+            } else if data[mid] > *target {
+                high = mid - 1
+            } else if data[mid] == *target {
+                return true
+            }
+
+        }
+        return false
+    } else {
+        return false
+    }
+}
+
+pub fn add_checks(check_0: &[usize], check_1: &[usize]) -> Vec<usize> {
+    let mut sum = Vec::with_capacity(check_0.len() + check_1.len());
+    let mut iter_0 = check_0.iter().peekable();
+    let mut iter_1 = check_1.iter().peekable();
+    loop {
+        match (iter_0.peek(), iter_1.peek()) {
+            (Some(&&v), None) => {
+                sum.push(v);
+                iter_0.next();
+            }
+            (None, Some(&&v)) => {
+                sum.push(v);
+                iter_1.next();
+            }
+            (Some(&&v_0), Some(&&v_1)) => {
+                if v_0 < v_1 {
+                    sum.push(v_0);
+                    iter_0.next();
+                } else if v_0 > v_1 {
+                    sum.push(v_1);
+                    iter_1.next();
+                } else {
+                    iter_0.next();
+                    iter_1.next();
+                }
+            }
+            (None, None) => break,
+        }
+    }
+    sum
 }
 
 impl std::fmt::Display for ParityCheckMatrix {
