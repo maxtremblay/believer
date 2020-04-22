@@ -80,3 +80,71 @@ impl<'a, D: Decoder> NEventsSimulator<'a, D> {
         self.result
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use super::super::ErasureDecoder;
+    use crate::ParityCheckMatrix;
+    use rand_chacha::ChaCha8Rng;
+    use rand::SeedableRng;
+
+    #[test]
+    fn 
+    there_are_at_least_n_failures_and_n_erasures() {
+        let code = ParityCheckMatrix::with_n_bits(3)
+        .with_checks(vec![vec![0, 1], vec![1, 2]]);
+
+        let mut decoder = ErasureDecoder::with_prob(0.5).for_code(code);
+        let rng = ChaCha8Rng::seed_from_u64(123);
+
+        let result = NEventsSimulator::from(&mut decoder)
+            .simulate_until_n_events_are_found_with_rng(10, &mut rng.clone())
+            .get_result();
+
+        assert!(result.get_n_failures() >= 10);
+        assert!(result.get_n_successes() >= 10);
+    }
+
+    #[test]
+    fn reproductibility_for_repetition_code() {
+        let code = ParityCheckMatrix::with_n_bits(3)
+            .with_checks(vec![vec![0, 1], vec![1, 2]]);
+
+        let mut decoder = ErasureDecoder::with_prob(0.5).for_code(code);
+        let rng = ChaCha8Rng::seed_from_u64(123);
+
+        let result_0 = NEventsSimulator::from(&mut decoder)
+            .simulate_until_n_events_are_found_with_rng(10, &mut rng.clone())
+            .get_result()
+            .get_success_rate();
+
+        let result_1 = NEventsSimulator::from(&mut decoder)
+            .simulate_until_n_events_are_found_with_rng(10, &mut rng.clone())
+            .get_result()
+            .get_success_rate();
+
+        assert!((result_0 - result_1).abs() < 1e-6); 
+    }
+
+    #[test]
+    fn reproductibility_for_hamming_code() {
+        let code = ParityCheckMatrix::with_n_bits(7)
+            .with_checks(vec![vec![0, 1, 2, 4], vec![0, 1, 3, 5], vec![0, 2, 3, 6]]);
+
+        let mut decoder = ErasureDecoder::with_prob(0.5).for_code(code);
+        let rng = ChaCha8Rng::seed_from_u64(123);
+
+        let result_0 = NEventsSimulator::from(&mut decoder)
+            .simulate_until_n_events_are_found_with_rng(10, &mut rng.clone())
+            .get_result()
+            .get_success_rate();
+
+        let result_1 = NEventsSimulator::from(&mut decoder)
+            .simulate_until_n_events_are_found_with_rng(10, &mut rng.clone())
+            .get_result()
+            .get_success_rate();
+
+        assert!((result_0 - result_1).abs() < 1e-6); 
+    }
+}

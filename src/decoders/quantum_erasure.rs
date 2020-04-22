@@ -2,6 +2,7 @@
 
 use super::{Decoder};
 use crate::ErasureResult;
+use crate::Ressources;
 use crate::GF4Stabilizers;
 use crate::ParityCheckMatrix;
 use rand::{Rng};
@@ -20,10 +21,7 @@ use rand::{Rng};
 /// decoder.decode(&decoder.random_error());
 /// ```
 /// 
-pub struct Ressources {
-    rank_mtx: Option<Vec<Vec<usize>>>,
-    sum_vec: Option<Vec<usize>>,
-}
+
 
 pub struct QuantumErasureDecoder {
     stabilizers: GF4Stabilizers,
@@ -112,15 +110,9 @@ impl Decoder for QuantumErasureDecoder {
 
     fn decode(&mut self, error: &Self::Error) -> ErasureResult {
 
-        // println!("without1:{}, error:{:?}",self.stabilizers.without(error).merge(), error);
-        // println!("without2:{}, error:{:?}",self.merged.without_merged(error), error);
-
-        //assert_eq!(self.stabilizers.without(error).merge(),self.merged.without_merged(error));
-
-        //println!("-------1-----------");
+        
         let mut rank_mtx = self.ressources.rank_mtx.take().unwrap();
         let mut sum_vec = self.ressources.sum_vec.take().unwrap();
-        //println!("--------2----------");
 
         let erased_rank = self.merged.keep_merged(error).rank_mut(&mut rank_mtx, &mut sum_vec);
         
