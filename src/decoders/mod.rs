@@ -17,8 +17,8 @@ use n_events_simulator::NEventsSimulator;
 pub mod erasure;
 pub use erasure::*;
 
-// pub mod quantum_erasure;
-// pub use quantum_erasure::{QuantumErasureDecoder, QuantumErasureDecoderBuilder};
+pub mod quantum_erasure;
+pub use quantum_erasure::*;
 
 /// An interface to deal with decoders
 ///
@@ -41,7 +41,7 @@ pub trait Decoder: Send + Sync + Sized {
     fn take_code(&mut self) -> Self::Code;
 
     /// Tries to decode a given error.
-    fn decode(&self, error: &Self::Error) -> Self::Result;
+    fn decode(&mut self, error: &Self::Error) -> Self::Result;
 
     /// Generates a random error with random number generator `rng`.
     fn get_random_error_with_rng<R: Rng>(&self, rng: &mut R) -> Self::Error;
@@ -52,19 +52,19 @@ pub trait Decoder: Send + Sync + Sized {
     }
 
     /// Generates and decodes a random error.
-    fn decode_random_error_with_rng<R: Rng>(&self, rng: &mut R) -> Self::Result {
+    fn decode_random_error_with_rng<R: Rng>(&mut self, rng: &mut R) -> Self::Result {
         self.decode(&self.get_random_error_with_rng(rng))
     }
 
     /// Generates and decodes a random error.
-    fn decode_random_error(&self) -> Self::Result {
+    fn decode_random_error(&mut self) -> Self::Result {
         self.decode_random_error_with_rng(&mut thread_rng())
     }
 
     /// Simulates decoding random error using `self` for `n_iterations` with random number
     /// generator `rng`.
     fn simulate_n_iterations_with_rng<R: Rng>(
-        &self,
+        &mut self,
         n_iterations: usize,
         rng: &mut R,
     ) -> SimulationResult {
@@ -75,7 +75,7 @@ pub trait Decoder: Send + Sync + Sized {
 
     /// Simulates decoding random error using `self` for `n_iterations` using the thread random
     /// number generator `rng`.
-    fn simulate_n_iterations(&self, n_iterations: usize) -> SimulationResult {
+    fn simulate_n_iterations(&mut self, n_iterations: usize) -> SimulationResult {
         self.simulate_n_iterations_with_rng(n_iterations, &mut thread_rng())
     }
 
@@ -84,7 +84,7 @@ pub trait Decoder: Send + Sync + Sized {
     ///
     /// That is, simulate until `n_events` successes and `n_events` are found.
     fn simulate_until_n_events_are_found_with_rng<R: Rng>(
-        &self,
+        &mut self,
         n_events: usize,
         rng: &mut R,
     ) -> SimulationResult {
@@ -97,7 +97,7 @@ pub trait Decoder: Send + Sync + Sized {
     /// generator `rng`.
     ///
     /// That is, simulate until `n_events` successes and `n_events` are found.
-    fn simulate_until_n_events_are_found(&self, n_events: usize) -> SimulationResult {
+    fn simulate_until_n_events_are_found(&mut self, n_events: usize) -> SimulationResult {
         self.simulate_until_n_events_are_found_with_rng(n_events, &mut thread_rng())
     }
     

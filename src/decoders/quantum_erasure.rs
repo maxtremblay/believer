@@ -1,10 +1,10 @@
 //! NOTE: Need to check the math to be sure everything work.
 
-use super::{Decoder, DecoderBuilder};
+use super::{Decoder};
 use crate::ErasureResult;
 use crate::GF4Stabilizers;
 use crate::ParityCheckMatrix;
-use rand::{thread_rng, Rng};
+use rand::{Rng};
 
 /// Decoder for quantum erasure channel.
 ///
@@ -19,9 +19,18 @@ use rand::{thread_rng, Rng};
 /// let decoder = QuantumErasureDecoder::new(stabilizers, erasure_prob);
 /// decoder.decode(&decoder.random_error());
 /// ```
+/// 
+pub struct Ressources {
+    rank_mtx: Option<Vec<Vec<usize>>>,
+    sum_vec: Option<Vec<usize>>,
+}
+
 pub struct QuantumErasureDecoder {
     stabilizers: GF4Stabilizers,
+    merged: ParityCheckMatrix,
+    no_error_rank: usize,
     erasure_prob: f64,
+    ressources: Ressources,
 }
 
 impl QuantumErasureDecoder {
@@ -39,10 +48,52 @@ impl QuantumErasureDecoder {
         if erasure_prob < 0.0 || erasure_prob > 1.0 {
             panic!("invalid probability");
         }
+        let merged = stabilizers.merge();
+        let no_error_rank = merged.get_rank();
+
+        let rank_mtx = Some(merged.tmp_rank_pcm());
+        let sum_vec = Some(Vec::with_capacity(merged.get_n_bits()));
+
+        let ressources = Ressources {
+            rank_mtx,
+            sum_vec,
+        };
+
         Self {
             stabilizers,
+            merged,
+            no_error_rank,
             erasure_prob,
+            ressources
         }
+    }
+
+    pub fn new_merged(merged: ParityCheckMatrix, erasure_prob: f64) -> Self {
+        if erasure_prob < 0.0 || erasure_prob > 1.0 {
+            panic!("invalid probability");
+        }
+        let stabilizers = GF4Stabilizers::empty_with_n_bits(merged.get_n_bits()/2);
+        let no_error_rank = merged.get_rank();
+
+        let rank_mtx = Some(merged.tmp_rank_pcm());
+        let sum_vec = Some(Vec::with_capacity(merged.get_n_bits()));
+
+        let ressources = Ressources {
+            rank_mtx,
+            sum_vec,
+        };
+
+        Self {
+            stabilizers,
+            merged,
+            no_error_rank,
+            erasure_prob,
+            ressources,
+        }
+    }
+
+    fn next_bit_is_erased<R: Rng>(&self, rng: &mut R) -> bool {
+        rng.gen::<f64>() < self.erasure_prob
     }
 }
 
@@ -51,60 +102,66 @@ impl Decoder for QuantumErasureDecoder {
     type Error = Vec<usize>;
 
     type Result = ErasureResult;
-    type Checks = GF4Stabilizers;
+    type Code = GF4Stabilizers;
 
-    fn decode(&self, error: &Self::Error) -> ErasureResult {
-        let erased_rank = self.stabilizers.keep(error).merge().rank();
+    fn for_code(mut self, code: Self::Code) -> Self {
+        self.merged = code.merge();
+        self.stabilizers = code;
+        self
+    }
+
+    fn decode(&mut self, error: &Self::Error) -> ErasureResult {
+
+        // println!("without1:{}, error:{:?}",self.stabilizers.without(error).merge(), error);
+        // println!("without2:{}, error:{:?}",self.merged.without_merged(error), error);
+
+        //assert_eq!(self.stabilizers.without(error).merge(),self.merged.without_merged(error));
+
+        //println!("-------1-----------");
+        let mut rank_mtx = self.ressources.rank_mtx.take().unwrap();
+        let mut sum_vec = self.ressources.sum_vec.take().unwrap();
+        //println!("--------2----------");
+
+        let erased_rank = self.merged.keep_merged(error).rank_mut(&mut rank_mtx, &mut sum_vec);
+        
         if erased_rank >= error.len() {
-            let not_erased_rank = self.stabilizers.without(error).merge().rank();
+            let not_erased_rank = self.merged.without_merged(error).rank_mut(&mut rank_mtx, &mut sum_vec);
+
+            self.ressources.rank_mtx = Some(rank_mtx);
+            self.ressources.sum_vec= Some(sum_vec);
+
             let non_commuting_overhead = erased_rank - error.len();
             let rank_sum = not_erased_rank + erased_rank - 2 * non_commuting_overhead;
-            let no_error_rank = self.stabilizers.merge().rank();
-            if rank_sum == no_error_rank {
+
+            if rank_sum == self.no_error_rank {
                 ErasureResult::Success
             } else {
                 ErasureResult::Failure
             }
         } else {
+            self.ressources.rank_mtx = Some(rank_mtx);
+            self.ressources.sum_vec= Some(sum_vec);
             ErasureResult::Failure
         }
     }
 
-    fn random_error(&self) -> Vec<usize> {
-        let mut rng = thread_rng();
+    fn get_random_error_with_rng<R: Rng>(&self, rng: &mut R) -> Self::Error {
         (0..self.stabilizers.n_qubits())
-            .filter(|_| rng.gen::<f64>() < self.erasure_prob)
+            .filter(|_| self.next_bit_is_erased(rng))
             .collect()
     }
 
-    fn take_checks(&mut self) -> Self::Checks {
+    fn take_code(&mut self) -> Self::Code {
         std::mem::replace(
             &mut self.stabilizers,
             GF4Stabilizers::from_parity_check_matrices(
-                ParityCheckMatrix::empty(),
-                ParityCheckMatrix::empty(),
+                ParityCheckMatrix::new(),
+                ParityCheckMatrix::new(),
             ),
         )
     }
-}
 
-pub struct QuantumErasureDecoderBuilder {
-    erasure_prob: f64,
-}
 
-impl QuantumErasureDecoderBuilder {
-    pub fn new(erasure_prob: f64) -> Self {
-        Self { erasure_prob }
-    }
-}
-
-impl DecoderBuilder for QuantumErasureDecoderBuilder {
-    type Checks = GF4Stabilizers;
-    type Decoder = QuantumErasureDecoder;
-
-    fn build_from(&self, checks: Self::Checks) -> Self::Decoder {
-        QuantumErasureDecoder::new(checks, self.erasure_prob)
-    }
 }
 
 #[cfg(test)]
@@ -126,7 +183,7 @@ mod test {
             7,
         );
 
-        let decoder = QuantumErasureDecoder::new(stabilizers, 0.25);
+        let mut decoder = QuantumErasureDecoder::new(stabilizers, 0.25);
 
         assert_eq!(decoder.decode(&vec![]), ErasureResult::Success);
         for i in 0..=6 {
@@ -154,7 +211,6 @@ mod test {
 
     #[test]
     fn shor_code_from_builder() {
-        let builder = QuantumErasureDecoderBuilder::new(0.25);
         let stabilizers = GF4Stabilizers::from_sparse_paulis(
             vec![
                 vec![(Z, 0), (Z, 1)],
@@ -169,7 +225,7 @@ mod test {
             9,
         );
 
-        let decoder = builder.build_from(stabilizers);
+        let mut decoder = QuantumErasureDecoder::new(stabilizers, 0.25);
 
         assert_eq!(decoder.decode(&vec![]), ErasureResult::Success);
         for i in 0..9 {
@@ -194,9 +250,7 @@ mod test {
             ],
             5,
         );
-
-        let decoder = QuantumErasureDecoder::new(stabilizers, 0.25);
-
+        let mut decoder = QuantumErasureDecoder::new(stabilizers, 0.25);
         assert_eq!(decoder.decode(&vec![]), ErasureResult::Success);
         for i in 0..5 {
             assert_eq!(decoder.decode(&vec![i]), ErasureResult::Success);

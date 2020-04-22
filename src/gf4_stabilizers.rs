@@ -8,6 +8,15 @@ pub struct GF4Stabilizers {
 }
 
 impl GF4Stabilizers {
+
+    pub fn empty_with_n_bits(n_bits: usize) -> Self {
+        Self {
+            x_checks: ParityCheckMatrix::with_n_bits(n_bits),
+            z_checks: ParityCheckMatrix::with_n_bits(n_bits)
+        }
+    }
+
+
     pub fn from_dense_paulis(stabilizers: Vec<Vec<Pauli>>, n_qubits: usize) -> Self {
         let mut x_checks = Vec::with_capacity(stabilizers.len());
         let mut z_checks = Vec::with_capacity(stabilizers.len());
@@ -25,10 +34,13 @@ impl GF4Stabilizers {
             });
             x_checks.push(x_check);
             z_checks.push(z_check);
+            
         });
+        println!("x checks:{:?}", x_checks);
+        println!("z checks:{:?}",z_checks);
         Self {
-            x_checks: ParityCheckMatrix::new(x_checks, n_qubits),
-            z_checks: ParityCheckMatrix::new(z_checks, n_qubits),
+            x_checks: ParityCheckMatrix::with_n_bits(n_qubits).with_checks(x_checks),
+            z_checks: ParityCheckMatrix::with_n_bits(n_qubits).with_checks(z_checks)
         }
     }
 
@@ -49,10 +61,11 @@ impl GF4Stabilizers {
             });
             x_checks.push(x_check);
             z_checks.push(z_check);
+            
         });
         Self {
-            x_checks: ParityCheckMatrix::new(x_checks, n_qubits),
-            z_checks: ParityCheckMatrix::new(z_checks, n_qubits),
+            x_checks: ParityCheckMatrix::with_n_bits(n_qubits).with_checks(x_checks),
+            z_checks: ParityCheckMatrix::with_n_bits(n_qubits).with_checks(z_checks)
         }
     }
 
@@ -82,7 +95,7 @@ impl GF4Stabilizers {
     }
 
     pub fn merge(&self) -> ParityCheckMatrix {
-        self.x_checks.right_concat(&self.z_checks)
+        self.x_checks.get_horizontal_concat_with(&self.z_checks)
     }
 
     pub fn n_qubits(&self) -> usize {
