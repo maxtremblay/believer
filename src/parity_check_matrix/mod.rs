@@ -753,7 +753,7 @@ impl ParityCheckMatrix {
         }
     }
 
-    pub fn circulant_down(indices: &Vec<usize>, l: usize) -> ParityCheckMatrix {
+    pub fn circulant_down(indices: &[usize], l: usize) -> ParityCheckMatrix {
         let w = indices.len();
         let mut checks: Vec<Vec<usize>> = Vec::with_capacity(l);
 
@@ -768,7 +768,7 @@ impl ParityCheckMatrix {
         ParityCheckMatrix::with_n_bits(l).with_checks(checks)
     }
 
-    pub fn circulant_right(indices: &Vec<usize>, l: usize) -> ParityCheckMatrix {
+    pub fn circulant_right(indices: &[usize], l: usize) -> ParityCheckMatrix {
         let w = indices.len();
         let mut checks: Vec<Vec<usize>> = Vec::with_capacity(l);
 
