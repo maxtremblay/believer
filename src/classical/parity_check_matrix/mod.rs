@@ -32,7 +32,7 @@ impl ParityCheckMatrix {
     /// # Example
     ///
     /// ```
-    /// # use believer::ParityCheckMatrix;
+    /// # use believer::classical::ParityCheckMatrix;
     /// let matrix = ParityCheckMatrix::new();
     /// ```
     pub fn new() -> Self {
@@ -48,7 +48,7 @@ impl ParityCheckMatrix {
     /// # Example
     ///
     /// ```
-    /// # use believer::ParityCheckMatrix;
+    /// # use believer::classical::ParityCheckMatrix;
     /// let matrix = ParityCheckMatrix::with_block_size(5);
     /// ```
     pub fn with_block_size(block_size: usize) -> Self {
@@ -69,7 +69,7 @@ impl ParityCheckMatrix {
     /// # Example
     ///
     /// ```
-    /// use believer::ParityCheckMatrix;
+    /// # use believer::classical::ParityCheckMatrix;
     /// let checks = vec![vec![0, 1], vec![1, 2]];
     /// let mut matrix = ParityCheckMatrix::with_block_size(3).with_checks(checks);
     /// ```
@@ -130,7 +130,7 @@ impl ParityCheckMatrix {
     /// # Example
     ///
     /// ```
-    /// use believer::ParityCheckMatrix;
+    /// # use believer::classical::ParityCheckMatrix;
     ///
     /// let matrix = ParityCheckMatrix::identity(3);
     ///
@@ -171,11 +171,11 @@ impl ParityCheckMatrix {
     /// # Example
     ///
     /// ```
-    /// use believer::ParityCheckMatrix;
+    /// # use believer::classical::ParityCheckMatrix;
     ///
     /// let checks = vec![vec![0, 1, 2, 5], vec![1, 3, 4], vec![2, 4, 5], vec![0, 5]];
     /// let matrix = ParityCheckMatrix::with_block_size(7).with_checks(checks);
-    /// assert_eq!(matrix.bit_degrees().collect(), vec![2, 2, 2, 1, 2, 3, 0]);
+    /// assert_eq!(matrix.bit_degrees().collect::<Vec<usize>>(), vec![2, 2, 2, 1, 2, 3, 0]);
     /// ```
     pub fn bit_degrees<'a>(&'a self) -> impl Iterator<Item = usize> + 'a {
         (0..self.block_size)
@@ -187,11 +187,11 @@ impl ParityCheckMatrix {
     /// # Example
     ///
     /// ```
-    /// use believer::ParityCheckMatrix;
+    /// # use believer::classical::ParityCheckMatrix;
     ///
     /// let checks = vec![vec![0, 1, 2, 5], vec![1, 3, 4], vec![2, 4, 5], vec![0, 5]];
     /// let matrix = ParityCheckMatrix::with_block_size(7).with_checks(checks);
-    /// assert_eq!(matrix.check_degrees().collect(), vec![4, 3, 3, 2]);
+    /// assert_eq!(matrix.check_degrees().collect::<Vec<usize>>(), vec![4, 3, 3, 2]);
     /// ```
     pub fn check_degrees<'a>(&'a self) -> impl Iterator<Item = usize> + 'a {
         self.checks().map(|check| check.len())
@@ -203,7 +203,7 @@ impl ParityCheckMatrix {
     /// # Example
     ///
     /// ```
-    /// use believer::ParityCheckMatrix;
+    /// # use believer::classical::ParityCheckMatrix;
     ///
     /// let checks = vec![vec![0, 1], vec![1, 2]];
     ///
@@ -249,7 +249,7 @@ impl ParityCheckMatrix {
     /// # Example
     ///
     /// ```
-    /// use believer::ParityCheckMatrix;
+    /// # use believer::classical::ParityCheckMatrix;
     ///
     /// let checks = vec![vec![0, 1], vec![1, 2], vec![0, 2]];
     /// let parity_check = ParityCheckMatrix::with_block_size(3).with_checks(checks);
@@ -259,117 +259,13 @@ impl ParityCheckMatrix {
     pub fn rank(&self) -> usize {
         Ranker::from_parity_check_matrix(self).rank()
     }
-    /*
-        pub fn rank(&self) -> usize {
-            let n_cols = self.block_size;
-            let n_rows = self.n_checks();
-            let mut rank = 0;
 
-            let mut tmp_matrix: Vec<Vec<usize>> = Vec::with_capacity(n_rows);
-
-            for i in 0..n_rows {
-                tmp_matrix
-                    .push(self.bit_indices[self.check_ranges[i]..self.check_ranges[i + 1]].to_vec());
-                // we store the original matrix as a vector of sparse rows
-            }
-
-            for j in 0..n_cols {
-                for i in 0..n_rows {
-                    if tmp_matrix[i].len() > 0 && tmp_matrix[i][0] == j {
-                        // select a NEW pivot
-
-                        for k in 0..i {
-                            if tmp_matrix[k].len() > 0 && tmp_matrix[k][0] == j {
-                                tmp_matrix[k] = add_checks(&tmp_matrix[i], &tmp_matrix[k]);
-                            }
-                        }
-                        for k in (i + 1)..n_rows {
-                            if tmp_matrix[k].len() > 0 && tmp_matrix[k][0] == j {
-                                tmp_matrix[k] = add_checks(&tmp_matrix[i], &tmp_matrix[k]);
-                            }
-                        }
-
-                        unsafe { tmp_matrix[i].set_len(0) };
-                        rank += 1;
-
-                        break;
-                    }
-                }
-            }
-
-            rank
-        }
-
-        pub fn tmp_rank_pcm(&self) -> Vec<Vec<usize>> {
-            let n_rows = self.n_checks();
-            let mut tmp_matrix: Vec<Vec<usize>> = Vec::with_capacity(n_rows);
-            for _ in 0..n_rows {
-                let new_row = Vec::with_capacity(n_rows);
-
-                tmp_matrix.push(new_row);
-            }
-
-            tmp_matrix
-        }
-
-        pub fn init_rank_tmp(&self, tmp_matrix: &mut Vec<Vec<usize>>) {
-            for i in 0..tmp_matrix.len() {
-                let new_row = &self.bit_indices[self.check_ranges[i]..self.check_ranges[i + 1]];
-
-                tmp_matrix[i].clear();
-
-                for j in 0..new_row.len() {
-                    tmp_matrix[i].push(new_row[j]);
-                }
-            }
-        }
-
-        pub fn rank_mut(&self, tmp_matrix: &mut Vec<Vec<usize>>, tmp_sum: &mut Vec<usize>) -> usize {
-            let n_cols = self.block_size;
-            let n_rows = self.n_checks();
-            let mut rank = 0;
-
-            self.init_rank_tmp(tmp_matrix);
-
-            for j in 0..n_cols {
-                for i in 0..n_rows {
-                    if tmp_matrix[i].len() > 0 && tmp_matrix[i][0] == j {
-                        // select a NEW pivot
-
-                        for k in 0..i {
-                            if tmp_matrix[k].len() > 0 && tmp_matrix[k][0] == j {
-                                add_checks_mut(&tmp_matrix[i], &tmp_matrix[k], tmp_sum);
-                                transfer_to(tmp_sum, &mut tmp_matrix[k]);
-                                tmp_sum.clear();
-                                // println!("{:?}",tmp_matrix[k]);
-                            }
-                        }
-                        for k in (i + 1)..n_rows {
-                            if tmp_matrix[k].len() > 0 && tmp_matrix[k][0] == j {
-                                add_checks_mut(&tmp_matrix[i], &tmp_matrix[k], tmp_sum);
-                                transfer_to(tmp_sum, &mut tmp_matrix[k]);
-                                tmp_sum.clear();
-                                //println!("{:?}",tmp_matrix[k]);
-                            }
-                        }
-
-                        unsafe { tmp_matrix[i].set_len(0) };
-                        rank += 1;
-
-                        break;
-                    }
-                }
-            }
-
-            rank
-        }
-    */
     /// Gets the transposed version of `self` by swapping the bits with the checks.
     ///
     /// # Example
     ///
     /// ```
-    /// use believer::ParityCheckMatrix;
+    /// # use believer::classical::ParityCheckMatrix;
     ///
     /// let checks = vec![vec![0, 1, 2], vec![1, 3], vec![0, 2, 3]];
     /// let matrix = ParityCheckMatrix::with_block_size(4).with_checks(checks);
@@ -390,7 +286,7 @@ impl ParityCheckMatrix {
     /// # Example
     ///
     /// ```
-    /// use believer::ParityCheckMatrix;
+    /// # use believer::classical::ParityCheckMatrix;
     /// let left_matrix = ParityCheckMatrix::with_block_size(3)
     ///     .with_checks(vec![vec![0, 1], vec![1, 2]]);
     /// let right_matrix = ParityCheckMatrix::with_block_size(4)
@@ -412,7 +308,7 @@ impl ParityCheckMatrix {
     /// # Example
     ///
     /// ```
-    /// use believer::ParityCheckMatrix;
+    /// # use believer::classical::ParityCheckMatrix;
     /// let left_matrix = ParityCheckMatrix::with_block_size(3)
     ///     .with_checks(vec![vec![0, 1], vec![1, 2]]);
     /// let right_matrix = ParityCheckMatrix::with_block_size(4)
@@ -434,7 +330,7 @@ impl ParityCheckMatrix {
     /// # Example
     ///
     /// ```
-    /// use believer::ParityCheckMatrix;
+    /// # use believer::classical::ParityCheckMatrix;
     ///
     /// let parity_check = ParityCheckMatrix::with_block_size(3)
     ///     .with_checks(vec![vec![0, 1], vec![1, 2]]);
@@ -454,7 +350,7 @@ impl ParityCheckMatrix {
     /// # Example
     ///
     /// ```
-    /// # use believer::*;
+    /// # use believer::classical::ParityCheckMatrix;
     /// let parity_check = ParityCheckMatrix::with_block_size(3)
     ///     .with_checks(vec![vec![0, 1], vec![1, 2]]);
     ///

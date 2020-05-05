@@ -3,7 +3,7 @@
 //! # Rules
 //!
 //! ```
-//! # use believer::GF2;
+//! # use believer::classical::GF2;
 //! assert_eq!(GF2::B0 + GF2::B0, GF2::B0);
 //! assert_eq!(GF2::B0 + GF2::B1, GF2::B1);
 //! assert_eq!(GF2::B1 + GF2::B0, GF2::B1);
