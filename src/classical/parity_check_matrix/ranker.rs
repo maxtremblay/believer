@@ -1,4 +1,4 @@
-use super::get_bitwise_sum;
+use super::check::bitwise_sum_of;
 use super::ParityCheckMatrix;
 
 type Row = Vec<usize>;
@@ -14,15 +14,15 @@ pub(super) struct Ranker {
 impl Ranker {
     pub(super) fn from_parity_check_matrix(matrix: &ParityCheckMatrix) -> Self {
         Self {
-            n_columns: matrix.get_n_bits(),
-            n_rows: matrix.get_n_checks(),
+            n_columns: matrix.block_size(),
+            n_rows: matrix.number_of_checks(),
             rank: 0,
             active_column: 0,
-            rows: matrix.checks_iter().map(|check| check.to_vec()).collect(),
+            rows: matrix.checks().map(|check| check.to_vec()).collect(),
         }
     }
 
-    pub(super) fn get_rank(mut self) -> usize {
+    pub(super) fn rank(mut self) -> usize {
         while self.is_not_in_echelon_form() {
             self.pivot_active_column();
             self.go_to_next_column();
@@ -65,7 +65,7 @@ impl Ranker {
     fn pivot_rows_that_start_in_active_column_with(&mut self, pivot: Row) {
         for row_index in 0..self.n_rows {
             if self.row_at_index_start_at_active_column(row_index) {
-                self.rows[row_index] = get_bitwise_sum(&pivot, &self.rows[row_index])
+                self.rows[row_index] = bitwise_sum_of(&pivot, &self.rows[row_index])
             }
         }
     }
@@ -89,7 +89,7 @@ mod test {
     #[test]
     fn rank_for_the_repetition_code_is_one_less_than_the_number_of_bits() {
         let checks = vec![vec![0, 1], vec![1, 2], vec![2, 3], vec![3, 4], vec![4, 0]];
-        let matrix = ParityCheckMatrix::with_n_bits(5).with_checks(checks);
+        let matrix = ParityCheckMatrix::with_block_size(5).with_checks(checks);
         let rank = Ranker::from_parity_check_matrix(&matrix).get_rank();
         assert_eq!(rank, 4);
     }
@@ -97,7 +97,7 @@ mod test {
     #[test]
     fn rank_for_a_full_rank_matrix_is_the_number_of_checks() {
         let checks = vec![vec![0, 1], vec![1, 2], vec![0, 1, 3]];
-        let matrix = ParityCheckMatrix::with_n_bits(4).with_checks(checks);
+        let matrix = ParityCheckMatrix::with_block_size(4).with_checks(checks);
         let rank = Ranker::from_parity_check_matrix(&matrix).get_rank();
         assert_eq!(rank, 3);
     }

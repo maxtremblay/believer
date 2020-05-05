@@ -1,4 +1,4 @@
-use crate::GF2;
+use crate::classical::gf2::GF2;
 use std::cmp::min;
 
 /// Represent one check in a parity check matrix.
@@ -7,8 +7,8 @@ pub type Check = Vec<usize>;
 /// A reference to a check.
 pub type CheckSlice<'a> = &'a [usize];
 
-pub fn get_dot_product(left_check: CheckSlice, right_check: CheckSlice) -> GF2 {
-    Dotter::from_checks(left_check, right_check).get_dot_product()
+pub fn dot_product_of(left_check: CheckSlice, right_check: CheckSlice) -> GF2 {
+    Dotter::from_checks(left_check, right_check).dot_product()
 }
 
 struct Dotter<'a> {
@@ -30,7 +30,7 @@ impl<'a> Dotter<'a> {
         }
     }
 
-    fn get_dot_product(mut self) -> GF2 {
+    fn dot_product(mut self) -> GF2 {
         while self.has_not_reach_the_end_of_a_check() {
             self.update_sum_from_active_bits();
             self.go_to_next_bits();
@@ -76,24 +76,9 @@ impl<'a> Dotter<'a> {
     }
 }
 
-pub fn get_bitwise_sum(left_check: CheckSlice, right_check: CheckSlice) -> Check {
-    BitwiseSummer::from_checks(left_check, right_check).get_bitwise_sum()
+pub fn bitwise_sum_of(left_check: CheckSlice, right_check: CheckSlice) -> Check {
+    BitwiseSummer::from_checks(left_check, right_check).sum()
 }
-
-// pub(super) fn get_bitwise_sum(left_check: CheckSlice, right_check: CheckSlice) -> Check {
-//     let mut sum = Vec::new();
-//     BinarySparseOperator::with_operation(|left_bit, right_bit| {
-//         if left_bit != right_bit {
-//             println!("Left {} // Right {}", left_bit, right_bit);
-//             sum.push(min(left_bit, right_bit));
-//             println!("Sum: {:?}", sum);
-//         }
-//     })
-//     .apply_over_checks(left_check, right_check);
-//     println!("Final sum: {:?}", sum);
-//     sum
-// }
-
 struct BitwiseSummer<'a> {
     left_check: CheckSlice<'a>,
     right_check: CheckSlice<'a>,
@@ -113,7 +98,7 @@ impl<'a> BitwiseSummer<'a> {
         }
     }
 
-    fn get_bitwise_sum(mut self) -> Check {
+    fn sum(mut self) -> Check {
         while self.has_not_reach_the_end_of_a_check() {
             self.update_sum_from_active_bits();
             self.go_to_next_bits();

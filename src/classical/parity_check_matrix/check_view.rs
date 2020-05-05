@@ -14,8 +14,6 @@
 //! let second_check = matrix.get_check(2);
 //! ```
 
-use crate::GF2;
-
 /// A view over a check of a parity check matrix.
 #[derive(Debug, PartialEq)]
 pub struct CheckView<'a> {
@@ -33,30 +31,31 @@ impl<'a> CheckView<'a> {
         self.bits.iter()
     }
 
-    /// Returns the syndrome of a given `message`. That is, returns the dot product between
-    /// `self` and `message`.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # use believer::{GF2, ParityCheckMatrix};
-    /// let parity_check = ParityCheckMatrix::with_n_bits(7)
-    ///     .with_checks(vec![
-    ///         vec![0, 1, 2, 4],
-    ///         vec![0, 1, 3, 5],
-    ///         vec![0, 2, 3, 6],
-    ///     ]);
-    /// let other = vec![GF2::B0, GF2::B1, GF2::B0, GF2::B1, GF2::B0, GF2::B1, GF2::B0];
-    ///
-    /// assert_eq!(parity_check.get_check(0).unwrap().compute_syndrome(&other), GF2::B1);
-    /// assert_eq!(parity_check.get_check(1).unwrap().compute_syndrome(&other), GF2::B1);
-    /// assert_eq!(parity_check.get_check(2).unwrap().compute_syndrome(&other), GF2::B1);
-    /// ```
-    pub fn compute_syndrome(&self, message: &[GF2]) -> GF2 {
-        self.iter().fold(GF2::B0, |acc, &bit| {
-            message.get(bit).map(|&value| acc + value).unwrap_or(acc)
-        })
-    }
+    /*
+        /// Returns the syndrome of a given `message`. That is, returns the dot product between
+        /// `self` and `message`.
+        ///
+        /// # Example
+        ///
+        /// ```
+        /// # use believer::{GF2, ParityCheckMatrix};
+        /// let parity_check = ParityCheckMatrix::with_n_bits(7)
+        ///     .with_checks(vec![
+        ///         vec![0, 1, 2, 4],
+        ///         vec![0, 1, 3, 5],
+        ///         vec![0, 2, 3, 6],
+        ///     ]);
+        /// let other = vec![GF2::B0, GF2::B1, GF2::B0, GF2::B1, GF2::B0, GF2::B1, GF2::B0];
+        ///
+        /// assert_eq!(parity_check.get_check(0).unwrap().compute_syndrome(&other), GF2::B1);
+        /// assert_eq!(parity_check.get_check(1).unwrap().compute_syndrome(&other), GF2::B1);
+        /// assert_eq!(parity_check.get_check(2).unwrap().compute_syndrome(&other), GF2::B1);
+        /// ```
+        pub fn compute_syndrome(&self, message: &[GF2]) -> GF2 {
+            self.iter().fold(GF2::B0, |acc, &bit| {
+                message.get(bit).map(|&value| acc + value).unwrap_or(acc)
+            })
+        }
 
     /// Returns `true` if the syndrome of `message` is `GF2::B1`.
     pub fn has_non_zero_syndrome(&self, message: &[GF2]) -> bool {
@@ -67,12 +66,14 @@ impl<'a> CheckView<'a> {
     pub fn has_zero_syndrome(&self, message: &[GF2]) -> bool {
         self.compute_syndrome(message) == GF2::B0
     }
+    */
 
     /// Returns the number of bits connected to `self`.
-    pub fn get_n_bits(&self) -> usize {
+    pub fn degree(&self) -> usize {
         self.bits.len()
     }
 
+    /*
     /// Returns the spread of `self`.
     ///
     /// # Example
@@ -144,7 +145,7 @@ impl<'a> CheckView<'a> {
     pub fn min(&self) -> usize {
         *self.bits.first().unwrap() // Check is always sorted and non empty.
     }
-
+    */
     /// Copies `self` into a new `Vec`.
     pub fn to_vec(&self) -> Vec<usize> {
         self.as_ref().to_vec()

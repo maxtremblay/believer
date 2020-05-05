@@ -2,14 +2,14 @@
 use super::ParityCheckMatrix;
 
 /// An iterator over all edges in `self` ordered by check first.
-pub struct EdgesIter<'a> {
+pub struct Edges<'a> {
     active_check: usize,
     index: usize,
     check_ranges: &'a [usize],
     bit_indices: &'a [usize],
 }
 
-impl<'a> EdgesIter<'a> {
+impl<'a> Edges<'a> {
     pub(super) fn from(matrix: &'a ParityCheckMatrix) -> Self {
         Self {
             active_check: 0,
@@ -47,7 +47,7 @@ impl<'a> EdgesIter<'a> {
     }
 }
 
-impl<'a> Iterator for EdgesIter<'a> {
+impl<'a> Iterator for Edges<'a> {
     type Item = (usize, usize);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -64,9 +64,9 @@ mod test {
     #[test]
     fn edges_iterator() {
         let parity_check =
-            ParityCheckMatrix::with_n_bits(3).with_checks(vec![vec![0, 1], vec![1, 2]]);
+            ParityCheckMatrix::with_block_size(3).with_checks(vec![vec![0, 1], vec![1, 2]]);
 
-        let mut iter = parity_check.edges_iter();
+        let mut iter = parity_check.edges();
 
         assert_eq!(iter.next(), Some((0, 0)));
         assert_eq!(iter.next(), Some((0, 1)));
