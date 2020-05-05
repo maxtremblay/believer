@@ -67,3 +67,68 @@ impl<'a, D: Decoder> NIterationsSimulator<'a, D> {
         SimulationResult::with_n_successes_and_failures(self.n_successes as u64, n_failures as u64)
     }
 }
+
+
+#[cfg(test)]
+mod test {
+    use super::super::ErasureDecoder;
+    use super::*;
+    use crate::ParityCheckMatrix;
+    use rand::SeedableRng;
+    use rand_chacha::ChaCha8Rng;
+
+    #[test]
+    fn there_is_n_iterations() {
+        let code = ParityCheckMatrix::with_n_bits(3).with_checks(vec![vec![0, 1], vec![1, 2]]);
+
+        let mut decoder = ErasureDecoder::with_prob(0.5).for_code(code);
+        let rng = ChaCha8Rng::seed_from_u64(123);
+        let n_iterations = NIterationsSimulator::from(&mut decoder)
+            .simulate_n_iterations_with_rng(1000, &mut rng.clone())
+            .get_result()
+            .get_n_iterations();
+        assert_eq!(n_iterations, 1000);
+    }
+
+    #[test]
+    fn reproductibility_for_repetition_code() {
+        let code = ParityCheckMatrix::with_n_bits(3).with_checks(vec![vec![0, 1], vec![1, 2]]);
+
+        let mut decoder = ErasureDecoder::with_prob(0.5).for_code(code);
+        let rng = ChaCha8Rng::seed_from_u64(123);
+        let result_0 = NIterationsSimulator::from(&mut decoder)
+            .simulate_n_iterations_with_rng(1000, &mut rng.clone())
+            .get_result()
+            .get_success_rate();
+
+        let result_1 = NIterationsSimulator::from(&mut decoder)
+            .simulate_n_iterations_with_rng(1000, &mut rng.clone())
+            .get_result()
+            .get_success_rate();
+
+        assert!((result_0 - result_1).abs() < 1e-6);
+    }
+
+    #[test]
+    fn reproductibility_for_hamming_code() {
+        let code = ParityCheckMatrix::with_n_bits(7).with_checks(vec![
+            vec![0, 1, 2, 4],
+            vec![0, 1, 3, 5],
+            vec![0, 2, 3, 6],
+        ]);
+
+        let mut decoder = ErasureDecoder::with_prob(0.5).for_code(code);
+        let rng = ChaCha8Rng::seed_from_u64(123);
+        let result_0 = NIterationsSimulator::from(&mut decoder)
+            .simulate_n_iterations_with_rng(1000, &mut rng.clone())
+            .get_result()
+            .get_success_rate();
+
+        let result_1 = NIterationsSimulator::from(&mut decoder)
+            .simulate_n_iterations_with_rng(1000, &mut rng.clone())
+            .get_result()
+            .get_success_rate();
+
+        assert!((result_0 - result_1).abs() < 1e-6);
+    }
+}

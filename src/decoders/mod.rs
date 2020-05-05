@@ -116,3 +116,23 @@ pub trait DecodingResult: Send + Sync {
         !self.is_success()
     }
 }
+
+#[derive(Debug)]
+pub struct Ressources {
+    rank_mtx: Option<Vec<Vec<usize>>>,
+    sum_vec: Option<Vec<usize>>,
+}
+
+/// An erasure decoder can either result in a `Success` when no logical bits are erased or in a
+/// `Failure` when some logical bits are erased.
+#[derive(Debug, PartialEq, Eq)]
+pub enum ErasureResult {
+    Failure,
+    Success,
+}
+
+impl DecodingResult for ErasureResult {
+    fn is_success(&self) -> bool {
+        self == &Self::Success
+    }
+}
