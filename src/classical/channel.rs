@@ -1,123 +1,78 @@
-//! Transmission channels.
+//! The binary symmetric channel.
 
-use crate::GF2;
-use rand::distributions::Uniform;
-use rand::{thread_rng, Rng};
+use qecsim::noise::binary::BinaryError;
+use qecsim::noise::IndependentNoiseModel;
+use qecsim::random::RandomNumberGenerator;
+use rand::distributions::{Bernoulli, Distribution};
 
-/// A trait that represent a binary transmission channel. It takes an `GF2` element
-/// and (randomly) map it to an other `GF2` element. It has an intrinsic likelyhood
-/// for each output.
+/// A binary symmetric channel caracterized by an error probability p.
+/// Any input is either affected by the identity error with probability (1 - p) or
+/// is flipped with probability p.
+///
+/// To use the full features of this struct, the `IndependentNoiseModel` trait of the crate qecsim
+/// must be imported.
 ///
 /// # Example
 ///
 /// ```
-/// # use believer::*;
-/// // Create a bsc with error prob of 0.2.
-/// let bsc = channel::BinarySymmetricChannel::new(0.2);
-/// // Sample the channel by always sending 0.
-/// let received = bsc.sample_uniform(GF2::B0, 1000);
-/// let number_of_one = received.iter()
-///     .filter(|&x| x == &GF2::B1)
-///     .collect::<Vec<_>>()
-///     .len();
-/// println!("{}", number_of_one); // Should be around 200.
+/// # use believer::classical::channel::BinarySymmetricChannel;
+/// use qecsim::random::rng_with_seed;
+/// use qecsim::noise::IndependentNoiseModel;
+/// // Create a bsc with an error probability of 0.2.
+/// let bsc = BinarySymmetricChannel::with_probability(0.2);
+/// let error_block = bsc.sample_error_block(1000, &mut rng_with_seed(72));
+/// println!("{}", error_block.weight()); // Should be around 200.
 /// ```
-pub trait BinaryChannel: Sync + Send {
-    /// For a given `output`, compute log(p(output|input = 1) / p(output|input = 0)).
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # use believer::*;
-    /// let bsc = channel::BinarySymmetricChannel::new(0.2);
-    /// assert_eq!(bsc.intrinsic_likelyhood(GF2::B0), -2.0);
-    /// assert_eq!(bsc.intrinsic_likelyhood(GF2::B1), 2.0);
-    /// ```
-    fn intrinsic_likelyhood(&self, output: GF2) -> f64;
-
-    /// For a given `input`, returns an `output` according to some
-    /// probability distribution depending on the channel.
-    fn send(&self, input: GF2) -> GF2;
-
-    // Returns the likelyhood of a given message.
-    fn message_likelyhood(&self, output: &[GF2]) -> Vec<f64> {
-        output
-            .iter()
-            .map(|x| self.intrinsic_likelyhood(*x))
-            .collect()
-    }
-
-    /// Returns a `Vec` of outputs as long as the `inputs` where each
-    /// output is sample using the `send` method.
-    fn sample(&self, inputs: &[GF2]) -> Vec<GF2> {
-        inputs.iter().map(|input| self.send(*input)).collect()
-    }
-
-    /// Returns a `Vec` of outputs where the `input` is send `n_inputs` times.
-    fn sample_uniform(&self, input: GF2, n_inputs: usize) -> Vec<GF2> {
-        (0..n_inputs).map(|_| self.send(input)).collect()
-    }
-}
-
-/// A binary symmetric channel caracterize by its error probability `prob`.
-/// That is, every time an input is send throught the channel, it is
-/// flipped with probability `prob`.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct BinarySymmetricChannel {
-    prob: f64,
+    distribution: Bernoulli,
     log_likelyhood: f64,
 }
 
 impl BinarySymmetricChannel {
-    /// Creates a new binary symmetric channel from an given `prob` of error.
+    /// Creates a new binary symmetric channel from an given `probability` of error.
     ///
     /// # Panic
     ///
-    /// Panic if `prob` is not between 0 and 1.
-    pub fn new(prob: f64) -> Self {
-        if 0.0 <= prob && prob <= 1.0 {
-            Self {
-                prob,
-                log_likelyhood: (prob / (1.0 - prob)).log2(),
-            }
-        } else {
-            panic!("prob is not between 0 and 1")
+    /// Panic if `probability` is not between 0 and 1.
+    pub fn with_probability(probability: f64) -> Self {
+        let distribution = Bernoulli::new(probability).expect("probability is not between 0 and 1");
+        Self {
+            distribution,
+            log_likelyhood: (probability / (1.0 - probability)).log2(),
+        }
+    }
+
+    /// Computes the instrinsic likelyhood of the given `error`.
+    ///
+    /// If the probability of flipping a bit is p, then the intrinsic likelyhood of identity is
+    /// log( p / (1 - p) ) and the intrinsic likelyhood of flip is log( (1 - p) / p ).
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use believer::classical::channel::BinarySymmetricChannel;
+    /// use qecsim::noise::binary::BinaryError;
+    /// let bsc = BinarySymmetricChannel::with_probability(0.2);
+    /// assert_eq!(bsc.intrinsic_likelyhood_of(BinaryError::Identity), -2.0);
+    /// assert_eq!(bsc.intrinsic_likelyhood_of(BinaryError::Flipped), 2.0);
+    /// ```
+    pub fn intrinsic_likelyhood_of(&self, error: BinaryError) -> f64 {
+        match error {
+            BinaryError::Identity => self.log_likelyhood,
+            BinaryError::Flipped => -1.0 * self.log_likelyhood,
         }
     }
 }
 
-impl BinaryChannel for BinarySymmetricChannel {
-    fn intrinsic_likelyhood(&self, output: GF2) -> f64 {
-        if output == GF2::B0 {
-            self.log_likelyhood
+impl IndependentNoiseModel for BinarySymmetricChannel {
+    type Error = BinaryError;
+
+    fn sample(&self, rng: &mut RandomNumberGenerator) -> Self::Error {
+        if self.distribution.sample(rng) {
+            BinaryError::Flipped
         } else {
-            -1.0 * self.log_likelyhood
+            BinaryError::Identity
         }
-    }
-
-    fn send(&self, input: GF2) -> GF2 {
-        let rand = thread_rng().sample(Uniform::new(0.0, 1.0));
-        if rand < self.prob {
-            input + GF2::B1
-        } else {
-            input
-        }
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn binary_symmetric_channel() {
-        let channel = BinarySymmetricChannel::new(0.2);
-
-        assert_eq!(channel.intrinsic_likelyhood(GF2::B0), -2.0);
-        assert_eq!(channel.intrinsic_likelyhood(GF2::B1), 2.0);
-        assert_eq!(
-            channel.message_likelyhood(&[GF2::B1, GF2::B0, GF2::B1]),
-            vec![2.0, -2.0, 2.0]
-        );
     }
 }

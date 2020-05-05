@@ -12,4 +12,4 @@ rand = "0.7"
 rand_chacha = "0.2"
 itertools = "0.8"
 rayon = "1.2"
-
+qecsim = { path = "../local_ldpc/qecsim" }
