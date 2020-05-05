@@ -1,13 +1,13 @@
 [package]
 name = "believer"
-version = "0.2.1"
+version = "0.3.0"
 authors = ["Maxime Tremblay"]
 edition = "2018"
-description = "A toolbox to simulate error correcting code performance."
+description = "The belief propagation algorithm for classical and quantum ldpc error correcting codes"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-num = "0.2.0"
+num = "0.2"
 rand = "0.7"
 rand_chacha = "0.2"
 itertools = "0.8"
