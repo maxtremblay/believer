@@ -160,37 +160,37 @@ impl<'a> BitwiseSummer<'a> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::GF2;
+    use crate::classical::gf2::GF2;
 
     #[test]
     fn dot_product() {
         let left_check = vec![0, 1, 3, 5, 8];
         let right_check = vec![1, 2, 5, 6, 8];
-        assert_eq!(get_dot_product(&left_check, &right_check), GF2::B1);
+        assert_eq!(dot_product_of(&left_check, &right_check), GF2::B1);
 
         let left_check = vec![0, 1, 5, 6, 8];
         let right_check = vec![1, 2, 5, 6, 8];
-        assert_eq!(get_dot_product(&left_check, &right_check), GF2::B0);
+        assert_eq!(dot_product_of(&left_check, &right_check), GF2::B0);
 
         let left_check = vec![0, 1, 3, 5, 8];
         let right_check = vec![];
-        assert_eq!(get_dot_product(&left_check, &right_check), GF2::B0);
+        assert_eq!(dot_product_of(&left_check, &right_check), GF2::B0);
     }
 
     #[test]
     fn bitwise_sum() {
         let left_check = vec![0, 1, 3, 5, 8];
         let right_check = vec![1, 2, 5, 6, 8];
-        assert_eq!(get_bitwise_sum(&left_check, &right_check), vec![0, 2, 3, 6]);
+        assert_eq!(bitwise_sum_of(&left_check, &right_check), vec![0, 2, 3, 6]);
 
         let left_check = vec![0, 1, 5, 6, 8];
         let right_check = vec![1, 2, 5, 6, 8];
-        assert_eq!(get_bitwise_sum(&left_check, &right_check), vec![0, 2]);
+        assert_eq!(bitwise_sum_of(&left_check, &right_check), vec![0, 2]);
 
         let left_check = vec![0, 1, 3, 5, 8];
         let right_check = vec![];
         assert_eq!(
-            get_bitwise_sum(&left_check, &right_check),
+            bitwise_sum_of(&left_check, &right_check),
             vec![0, 1, 3, 5, 8]
         );
     }

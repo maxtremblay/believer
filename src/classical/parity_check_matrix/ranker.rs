@@ -82,7 +82,7 @@ mod test {
     #[test]
     fn rank_for_empty_matrix_is_zero() {
         let matrix = ParityCheckMatrix::new();
-        let rank = Ranker::from_parity_check_matrix(&matrix).get_rank();
+        let rank = Ranker::from_parity_check_matrix(&matrix).rank();
         assert_eq!(rank, 0);
     }
 
@@ -90,7 +90,7 @@ mod test {
     fn rank_for_the_repetition_code_is_one_less_than_the_number_of_bits() {
         let checks = vec![vec![0, 1], vec![1, 2], vec![2, 3], vec![3, 4], vec![4, 0]];
         let matrix = ParityCheckMatrix::with_block_size(5).with_checks(checks);
-        let rank = Ranker::from_parity_check_matrix(&matrix).get_rank();
+        let rank = Ranker::from_parity_check_matrix(&matrix).rank();
         assert_eq!(rank, 4);
     }
 
@@ -98,7 +98,7 @@ mod test {
     fn rank_for_a_full_rank_matrix_is_the_number_of_checks() {
         let checks = vec![vec![0, 1], vec![1, 2], vec![0, 1, 3]];
         let matrix = ParityCheckMatrix::with_block_size(4).with_checks(checks);
-        let rank = Ranker::from_parity_check_matrix(&matrix).get_rank();
+        let rank = Ranker::from_parity_check_matrix(&matrix).rank();
         assert_eq!(rank, 3);
     }
 
@@ -112,8 +112,8 @@ mod test {
             vec![0, 4, 6],
             vec![5, 6],
         ];
-        let matrix = ParityCheckMatrix::with_n_bits(7).with_checks(checks);
-        let rank = Ranker::from_parity_check_matrix(&matrix).get_rank();
+        let matrix = ParityCheckMatrix::with_block_size(7).with_checks(checks);
+        let rank = Ranker::from_parity_check_matrix(&matrix).rank();
         assert_eq!(rank, 4);
     }
 }

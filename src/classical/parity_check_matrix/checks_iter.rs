@@ -36,20 +36,20 @@ mod test {
     #[test]
     fn checks_iterator() {
         let checks = vec![vec![0, 1, 2], vec![2, 3], vec![0, 3], vec![1, 2, 3]];
-        let matrix = ParityCheckMatrix::with_block_size(4).with_checks(checks);
+        let matrix = ParityCheckMatrix::with_block_size(4).with_checks(checks.clone());
         let mut iter = Checks::from(&matrix);
 
-        assert_eq!(iter.next(), Some(&[0, 1, 2]));
-        assert_eq!(iter.next(), Some(&[2, 3]));
-        assert_eq!(iter.next(), Some(&[0, 3]));
-        assert_eq!(iter.next(), Some(&[1, 2, 3]));
+        assert_eq!(iter.next(), Some(checks[0].as_slice()));
+        assert_eq!(iter.next(), Some(checks[1].as_slice()));
+        assert_eq!(iter.next(), Some(checks[2].as_slice()));
+        assert_eq!(iter.next(), Some(checks[3].as_slice()));
         assert_eq!(iter.next(), None);
     }
 
     #[test]
     fn checks_iterator_for_empty_matrix() {
         let matrix = ParityCheckMatrix::new();
-        let mut iter = ChecksIter::from(&matrix);
+        let mut iter = Checks::from(&matrix);
         assert_eq!(iter.next(), None);
     }
 }

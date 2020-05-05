@@ -70,13 +70,13 @@ mod test {
     }
 
     #[test]
-    fn tranposition_with_some_empty_tranposed_checks() {
+    fn tranposition_with_some_empty_transposed_checks() {
         let matrix = ParityCheckMatrix::with_block_size(5).with_checks(vec![
             vec![0, 1, 4],
             vec![2, 4],
             vec![0, 1, 2],
         ]);
-        let transposed = Transposer::from(&matrix).get_transposed_matrix();
+        let transposed = Transposer::from(&matrix).transposed();
 
         let expected = ParityCheckMatrix::with_block_size(3).with_checks(vec![
             vec![0, 2],
