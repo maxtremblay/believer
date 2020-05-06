@@ -18,12 +18,60 @@ use transposer::Transposer;
 mod concatener;
 use concatener::Concatener;
 
+use qecsim::code::Code;
+use qecsim::decoding::syndrome_decoding::{CheckState, Syndrome};
+use qecsim::noise::binary::BinaryError;
+use qecsim::noise::ErrorBlock;
+
 /// A sparse implementation of a parity check matrix.
 #[derive(Debug, PartialEq, Clone)]
 pub struct ParityCheckMatrix {
     check_ranges: Vec<usize>,
     bit_indices: Vec<usize>,
     block_size: usize,
+}
+
+impl Code for ParityCheckMatrix {
+    type Error = BinaryError;
+
+    fn block_size(&self) -> usize {
+        self.block_size
+    }
+
+    fn dimension(&self) -> usize {
+        self.block_size - self.rank()
+    }
+
+    fn erased_at<P>(&self, positions: P) -> Self
+    where
+        P: IntoIterator<Item = usize>,
+    {
+        let mut checks: Vec<Check> = self.checks().map(|check| check.to_vec()).collect();
+        for bit in positions.into_iter() {
+            for check in checks.iter_mut() {
+                if let Some(position) = check.iter().position(|b| *b == bit).clone() {
+                    check.swap_remove(position);
+                }
+            }
+        }
+        ParityCheckMatrix::with_block_size(self.block_size).with_checks(checks)
+    }
+
+    fn is_equivalent_to_identity(&self, error_block: &ErrorBlock<BinaryError>) -> bool {
+        error_block.weight() == 0
+    }
+
+    fn syndrome_of(&self, error_block: &ErrorBlock<BinaryError>) -> Syndrome {
+        self.checks()
+            .map(|check| {
+                if error_block.satisfy_check(check.to_vec()) {
+                    CheckState::Satisfied
+                } else {
+                    CheckState::Unsatisfied
+                }
+            })
+            .collect()
+    }
 }
 
 impl ParityCheckMatrix {
@@ -60,6 +108,8 @@ impl ParityCheckMatrix {
     }
 
     /// Set the checks of `self` consuming `checks`.
+    ///
+    /// It also sort the checks before inserting them.
     ///
     /// # Panic
     ///
@@ -148,8 +198,8 @@ impl ParityCheckMatrix {
         }
     }
 
-    /// Returns the block size.
-    pub fn block_size(&self) -> usize {
+    /// Returns the number of bits.
+    pub fn number_of_bits(&self) -> usize {
         self.block_size
     }
 
@@ -223,27 +273,6 @@ impl ParityCheckMatrix {
         Some(&self.bit_indices[*check_start..*check_end])
     }
 
-    /*
-        /// Computes the syndrome of a given `error`.
-        ///
-        /// # Example
-        ///
-        /// ```
-        /// use believer::{GF2, ParityCheckMatrix};
-        ///
-        /// let checks = vec![vec![0, 1], vec![1, 2]];
-        /// let parity_check = ParityCheckMatrix::with_block_size(3).with_checks(checks);
-        ///
-        /// let message = vec![GF2::B0, GF2::B1, GF2::B1];
-        ///
-        /// assert_eq!(parity_check.syndrome_of(&message), vec![GF2::B1, GF2::B0]);
-        /// ```
-        pub fn syndrome_of(&self, message: &[GF2]) -> Vec<GF2> {
-            self.checks_iter()
-                .map(|check| check.compute_syndrome(message))
-                .collect()
-        }
-    */
     /// Computes the rank of `self`.
     ///
     /// # Example
@@ -365,144 +394,6 @@ impl ParityCheckMatrix {
     pub fn edges(&self) -> Edges {
         Edges::from(self)
     }
-
-    /*
-        /// Returns a truncated parity check matrix with only the column of the given `bits`.
-        ///
-        /// # Example
-        ///
-        /// ```
-        /// use believer::ParityCheckMatrix;
-        /// let checks = ParityCheckMatrix::with_block_size(5).with_checks(vec![
-        ///     vec![0, 1, 2],
-        ///     vec![2, 3, 4],
-        ///     vec![0, 2, 4],
-        ///     vec![1, 3],
-        /// ]);
-        ///
-        /// let truncated_checks = ParityCheckMatrix::with_block_size(5).with_checks(vec![
-        ///     vec![0, 1],
-        ///     vec![4],
-        ///     vec![0, 4],
-        ///     vec![1],
-        /// ]);
-        ///
-        /// assert_eq!(checks.keep(&[0, 1, 4]), truncated_checks);
-        /// ```
-        pub fn keep(&self, bits: &[usize]) -> Self {
-            let checks = self
-                .checks_iter()
-                .map(|check| {
-                    check
-                        .iter()
-                        .filter(|&bit| bits.iter().any(|b| b == bit))
-                        .cloned()
-                        .collect()
-                })
-                .collect();
-            Self::with_block_size(self.block_size()).with_checks(checks)
-        }
-
-        pub fn keep_merged(&self, bits: &[usize]) -> ParityCheckMatrix {
-            let mut tot_nb_checks = 0;
-            let mut target = ParityCheckMatrix::with_block_size(self.block_size());
-            target.check_ranges.push(0);
-
-            for check in self.checks_iter() {
-                let mut nb_check = 0;
-
-                check
-                    .iter()
-                    .filter(|&bit| {
-                        //println!("binary search, bits:{:?}, bit:{}, res:{}",bits, bit + (self.block_size()/2), binary_search(bits, &(bit + (self.block_size()/2))));
-
-                        let mut found = false;
-                        //println!("binary search, bits:{:?}, bit:{}, res:{}",bits, bit + (self.block_size()/2), binary_search(bits, &(bit + (self.block_size()/2))));
-                        if bit < &(self.block_size() / 2) {
-                            found = binary_search(bits, bit);
-                        } else {
-                            found = binary_search(bits, &(bit - (self.block_size() / 2)));
-                            // do we found the check in either the Z part or the X part. Both have width block_size/2
-                        }
-
-                        if found {
-                            target.bit_indices.push(*bit);
-                            nb_check += 1;
-                        }
-                        found
-                    })
-                    .count();
-
-                tot_nb_checks += nb_check;
-                target.check_ranges.push(tot_nb_checks);
-            }
-
-            target
-        }
-
-        pub fn without_merged(&self, bits: &[usize]) -> ParityCheckMatrix {
-            let mut tot_nb_checks = 0;
-            let mut target = ParityCheckMatrix::with_block_size(self.block_size());
-            target.check_ranges.push(0);
-
-            for check in self.checks_iter() {
-                let mut nb_check = 0;
-
-                check
-                    .iter()
-                    .filter(|&bit| {
-                        let mut found = false;
-                        //println!("binary search, bits:{:?}, bit:{}, res:{}",bits, bit + (self.block_size()/2), binary_search(bits, &(bit + (self.block_size()/2))));
-                        if bit < &(self.block_size() / 2) {
-                            found = !binary_search(bits, bit);
-                        } else {
-                            found = !binary_search(bits, &(bit - (self.block_size() / 2)));
-                            // do we found the check in either the Z part or the X part. Both have width block_size/2
-                        }
-
-                        if found {
-                            target.bit_indices.push(*bit);
-                            nb_check += 1;
-                        }
-                        found
-                    })
-                    .count();
-
-                tot_nb_checks += nb_check;
-                target.check_ranges.push(tot_nb_checks);
-            }
-
-            target
-        }
-    */
-    /*
-    /// Returns a truncated parity check matrix where the column of the given `bits` are remove.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # use believer::*;
-    /// let checks = ParityCheckMatrix::with_block_size(5).with_checks(vec![
-    ///     vec![0, 1, 2],
-    ///     vec![2, 3, 4],
-    ///     vec![0, 2, 4],
-    ///     vec![1, 3],
-    /// ]);
-    ///
-    /// let truncated_checks = ParityCheckMatrix::with_block_size(5).with_checks(vec![
-    ///     vec![1],
-    ///     vec![3, 4],
-    ///     vec![4],
-    ///     vec![1, 3],
-    /// ]);
-    ///
-    /// assert_eq!(checks.without(&[0, 2]), truncated_checks);
-    /// ```
-    pub fn without(&self, bits: &[usize]) -> Self {
-        let to_keep: Vec<usize> = (0..9).filter(|x| !bits.contains(x)).collect();
-        self.keep(&to_keep)
-    }
-    */
     /*
     pub fn gbc(&self, b: &ParityCheckMatrix) -> ParityCheckMatrix {
         // should check that A and B commute and that Hx*Hz^T = 0
@@ -752,22 +643,25 @@ mod test {
         let checks = vec![vec![0, 1, 5], vec![2, 3, 4]];
         ParityCheckMatrix::with_block_size(5).with_checks(checks);
     }
-    /*
+
     #[test]
     fn syndrome() {
         let parity_check =
             ParityCheckMatrix::with_block_size(3).with_checks(vec![vec![0, 1], vec![1, 2]]);
-        let bits = vec![GF2::B0, GF2::B1, GF2::B1];
-
-        assert_eq!(
-            parity_check.check(0).unwrap().compute_syndrome(&bits),
-            GF2::B1
-        );
-        assert_eq!(
-            parity_check.check(1).unwrap().compute_syndrome(&bits),
-            GF2::B0
-        );
-        assert_eq!(parity_check.syndrome_of(&bits), vec![GF2::B1, GF2::B0]);
+        let mut error_block = ErrorBlock::new();
+        error_block.insert_at(0, BinaryError::Flipped);
+        let syndrome = vec![CheckState::Unsatisfied, CheckState::Satisfied].into();
+        assert_eq!(parity_check.syndrome_of(&error_block), syndrome);
     }
-    */
+
+    #[test]
+    fn check_if_error_is_equivalent_to_identity() {
+        let parity_check =
+            ParityCheckMatrix::with_block_size(3).with_checks(vec![vec![0, 1], vec![1, 2]]);
+        let no_error = ErrorBlock::new();
+        assert!(parity_check.is_equivalent_to_identity(&no_error));
+        let mut error_block = ErrorBlock::new();
+        error_block.insert_at(0, BinaryError::Flipped);
+        assert!(parity_check.is_not_equivalent_to_identity(&error_block));
+    }
 }

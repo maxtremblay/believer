@@ -19,7 +19,7 @@ impl<'a> Concatener<'a> {
     }
 
     pub(super) fn concat_horizontally(&self) -> ParityCheckMatrix {
-        let block_size = self.left_matrix.block_size() + self.right_matrix.block_size();
+        let block_size = self.left_matrix.number_of_bits() + self.right_matrix.number_of_bits();
         let checks = self.get_checks_of_horizontal_concatenation();
         ParityCheckMatrix::with_block_size(block_size).with_checks(checks)
     }
@@ -49,12 +49,12 @@ impl<'a> Concatener<'a> {
     fn pad_right_check(&self, check: CheckSlice) -> Check {
         check
             .iter()
-            .map(|bit| bit + self.left_matrix.block_size())
+            .map(|bit| bit + self.left_matrix.number_of_bits())
             .collect()
     }
 
     pub(super) fn concat_diagonally(&self) -> ParityCheckMatrix {
-        let n_bits = self.left_matrix.block_size() + self.right_matrix.block_size();
+        let n_bits = self.left_matrix.number_of_bits() + self.right_matrix.number_of_bits();
         let checks = self.get_checks_of_diagonal_concatenation();
         ParityCheckMatrix::with_block_size(n_bits).with_checks(checks)
     }

@@ -14,7 +14,7 @@ pub(super) struct Ranker {
 impl Ranker {
     pub(super) fn from_parity_check_matrix(matrix: &ParityCheckMatrix) -> Self {
         Self {
-            n_columns: matrix.block_size(),
+            n_columns: matrix.number_of_bits(),
             n_rows: matrix.number_of_checks(),
             rank: 0,
             active_column: 0,

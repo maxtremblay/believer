@@ -9,7 +9,7 @@ pub(super) struct Transposer<'a> {
 
 impl<'a> Transposer<'a> {
     pub(super) fn from(matrix: &'a ParityCheckMatrix) -> Self {
-        let checks = vec![Vec::new(); matrix.block_size()];
+        let checks = vec![Vec::new(); matrix.number_of_bits()];
         Self {
             matrix,
             checks,
