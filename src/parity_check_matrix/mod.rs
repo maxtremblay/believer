@@ -270,10 +270,10 @@ impl ParityCheckMatrix {
         TensorProduct::of(self, other).compute()
     }
 
-    ///// Computes the hypergraph product of self with other.
-    //pub fn hyper_graph_product_with(&self, other: &ParityCheckMatrix) -> (Self, Self) {
-    //HyperGraphProduct::of(self, other).compute()
-    //}
+    /// Computes the hypergraph product of self with other.
+    pub fn hyper_graph_product_with(&self, other: &ParityCheckMatrix) -> (Self, Self) {
+        HyperGraphProduct::of(self, other).compute()
+    }
 
     /// Computes the rank of `self`.
     ///
