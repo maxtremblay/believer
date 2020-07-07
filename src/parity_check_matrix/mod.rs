@@ -266,11 +266,42 @@ impl ParityCheckMatrix {
     }
 
     /// Computes the tensor product of self with other.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use believer::ParityCheckMatrix;
+    ///
+    /// let matrix = ParityCheckMatrix::with_n_bits(2).with_checks(vec![vec![0, 1]]);
+    /// let product = matrix.tensor_product_with(&matrix);
+    /// let expected = ParityCheckMatrix::with_n_bits(4)
+    ///     .with_checks(vec![vec![0, 1, 2, 3]]);
+    ///
+    /// assert_eq!(product, expected);
+    /// ```
     pub fn tensor_product_with(&self, other: &ParityCheckMatrix) -> Self {
         TensorProduct::of(self, other).compute()
     }
 
     /// Computes the hypergraph product of self with other.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use believer::ParityCheckMatrix;
+    ///
+    /// let matrix = ParityCheckMatrix::with_n_bits(2).with_checks(vec![vec![0, 1]]);
+    /// let (x_matrix, z_matrix) = matrix.hyper_graph_product_with(&matrix);
+    ///
+    /// let x_expected = ParityCheckMatrix::with_n_bits(6)
+    ///     .with_checks(vec![vec![0, 2, 4], vec![1, 3, 4]);
+    ///
+    /// let z_expected = ParityCheckMatrix::with_n_bits(6)
+    ///     .with_checks(vec![vec![0, 1, 4], vec![2, 3, 4]);
+    ///
+    /// assert_eq!(x_matrix, x_expected);
+    /// assert_eq!(z_matrix, z_expected);
+    /// ```
     pub fn hyper_graph_product_with(&self, other: &ParityCheckMatrix) -> (Self, Self) {
         HyperGraphProduct::of(self, other).compute()
     }
