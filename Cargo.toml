@@ -8,7 +8,7 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 num = "0.2.0"
-rand = "0.7"
+rand = "0.8"
 rand_chacha = "0.2"
 itertools = "0.8"
 rayon = "1.2"
